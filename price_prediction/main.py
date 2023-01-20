@@ -4,10 +4,10 @@ import torch
 import time
 import numpy as np
 from torch.utils.data.sampler import SubsetRandomSampler
-from dataset import FeatureDataset
-from model import NeuralNetwork
+from price_prediction.price_dataset import FeatureDataset
+from price_prediction.model import NeuralNetwork
 
-dataset = FeatureDataset("./data/Top 15 Data.csv")
+dataset = FeatureDataset("./data/Top 15 Price Data.csv")
 batch_size = 1
 validation_split = 0.1
 shuffle_dataset = True
@@ -39,6 +39,7 @@ validation_loader = torch.utils.data.DataLoader(
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
+
 # define architecture
 model = NeuralNetwork().to(device)
 print(model)
