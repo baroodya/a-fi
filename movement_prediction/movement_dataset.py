@@ -1,32 +1,42 @@
 import pandas as pd
 import numpy as np
+import yfinance as yf
 import torch
 from torch.utils.data import Dataset
-from sklearn.preprocessing import StandardScaler
+from constants import TICKER_SYMBOLS
 
 
-class FeatureDataset(Dataset):
-    def __init__(self, file_name, scale=False):
-        # read csv file and load row data into variables
-        file_out = pd.read_csv(file_name)
-        feature_cols = file_out.columns.difference(
-            ["Next Day Movement"]
-        )
-        normalized_file_out = file_out[feature_cols].apply(
+class MovementFeatureDataset(Dataset):
+    def __init__(self, file_name, scale=True):
+
+        df = pd.DataFrame()
+        for symbol in TICKER_SYMBOLS:
+            stock = yf.Ticker(symbol)
+            df = pd.concat(
+                [df, stock.history(period="max").reset_index()]
+            )
+
+            # Create Labels
+            df["Next Day Movement"] = df["Close"] < df["Close"].shift(
+                -1
+            )
+
+            # trim NaNs
+            df = df.dropna()
+
+            # convert types
+            df = df.astype({"Next Day Movement": "int"})
+        df = df.drop(columns=["Dividends"])
+
+        # normalize feature columns
+        feature_cols = df.columns.difference(["Next Day Movement"])
+        normalized_df = df[feature_cols].apply(
             lambda x: (x - x.mean()) / x.std(), axis=0
         )
-        num_features = file_out.shape[1] - 1
+        num_features = df.shape[1] - 1
 
-        x = normalized_file_out.iloc[:-1, :num_features].to_numpy(
-            dtype=float
-        )
-        y = file_out.iloc[:-1, num_features].values
-
-        # Feature Scaling
-        if scale:
-            sc = StandardScaler()
-            x_train = sc.fit_transform(x_train)
-            x_test = sc.fit_transform(x_test)
+        x = normalized_df.iloc[:-1, :num_features].to_numpy(dtype=float)
+        y = df.iloc[:-1, num_features].values
 
         # Converting to torch tensors
         self.X = torch.tensor(x, dtype=torch.float32)

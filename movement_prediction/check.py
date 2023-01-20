@@ -3,11 +3,11 @@ import time
 import numpy as np
 import pandas as pd
 from torch.utils.data.sampler import SubsetRandomSampler
-from movement_dataset import FeatureDataset
-from model import NeuralNetwork
+from movement_dataset import MovementFeatureDataset
+from model import AFiMovementModel
 from constants import CURRENT_MODEL_PATH
 
-model = NeuralNetwork()
+model = AFiMovementModel()
 print(f"Model: {model}")
 model.load_state_dict(torch.load(CURRENT_MODEL_PATH))
 
@@ -21,7 +21,7 @@ num_features = file_out.shape[1] - 1
 x = file_out.iloc[:-1, :num_features].to_numpy(dtype=float)
 y = file_out.iloc[:-1, num_features].values
 
-test_dataset = FeatureDataset(
+test_dataset = MovementFeatureDataset(
     "./movement_prediction/data/Test Data (IBM).csv"
 )
 test_loader = torch.utils.data.DataLoader(

@@ -2,24 +2,25 @@ import torch
 import time
 import numpy as np
 from torch.utils.data.sampler import SubsetRandomSampler
-from movement_dataset import FeatureDataset
-from model import NeuralNetwork
+from movement_dataset import MovementFeatureDataset
+from model import AFiMovementModel
 from constants import CURRENT_MODEL_PATH
 
 
-training_dataset = FeatureDataset(
+training_dataset = MovementFeatureDataset(
     "./movement_prediction/data/Top 15 Movement Data.csv"
 )
-test_dataset = FeatureDataset(
+test_dataset = MovementFeatureDataset(
     "./movement_prediction/data/Test Data (IBM).csv"
 )
 training_batch_size = 1
 validation_split = 0.1
 shuffle_dataset = True
 random_seed = 42
-lr = 1e-4
+lr = 1e-3
 epochs = 5
 use_pretrained = False
+num_features = training_dataset.X.shape[1]
 
 # Creating data indices for training and validation splits:
 training_dataset_size = len(training_dataset)
@@ -51,50 +52,18 @@ test_loader = torch.utils.data.DataLoader(
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Using {device} device")
-# define architecture
-model = NeuralNetwork().to(device)
+
+loss_func = torch.nn.BCELoss()
+model = AFiMovementModel(num_features, loss_func).to(device)
 print(f"Model: {model}")
 # for param in model.parameters():
 #     print(param)
 
-# define loss function and optimizer
-loss_func = torch.nn.BCELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+# define optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 if not use_pretrained:
-    for e in range(epochs):
-        running_loss = 0
-        # batch training
-        batch_num = 1
-        for features, labels in train_loader:
-            # forward pass
-            output = model(features)
-            loss = loss_func(output, labels)
-            if np.isnan(loss.item()):
-                print(f"NaN reached. Breaking...\nFeatures: {features}")
-                break
-
-            if batch_num % 1000 == 0:
-                progress = round(
-                    (batch_num + (e * len(train_loader)))
-                    / ((len(train_loader)) * epochs)
-                    * 100,
-                    2,
-                )
-                print(
-                    f"Training on {training_dataset_size} datapoints. Progress: {progress}%. Output: {round(output.item(), 4)} Loss: {round(running_loss / batch_num,4)}",
-                    end="\r",
-                )
-                running_loss = 0
-            batch_num += 1
-
-            # backward pass
-            model.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item()
-    print()
+    model.train(train_loader, optimizer, epochs)
     torch.save(
         model.state_dict(),
         CURRENT_MODEL_PATH,
@@ -102,32 +71,12 @@ if not use_pretrained:
 else:
     model.load_state_dict(torch.load(CURRENT_MODEL_PATH))
 
-num_correct = 0
-num_seen = 0
-for features, label in validation_loader:
-    output = model(features)
-    loss = loss_func(output, label)
-
-    if output > 0.5 and label == 1 or output < 0.5 and label == 0:
-        num_correct += 1
-    num_seen += 1
-
+validation_data = model.test(validation_loader)
 print(
-    f"Validation done. Accuracy: {round(num_correct/num_seen * 100, 3)}%"
+    f"Validation done. Accuracy: {round(validation_data['accuracy'] * 100, 3)}%"
 )
 
-num_correct = 0
-num_seen = 0
-for features, label in test_loader:
-    output = model(features)
-    print(features)
-    print(round(output.item(), 4))
-    loss = loss_func(output, label)
-
-    if output > 0.5 and label == 1 or output < 0.5 and label == 0:
-        num_correct += 1
-    num_seen += 1
-
+test_data = model.test(test_loader)
 print(
-    f"Testing done. Accuracy: {round(num_correct/num_seen * 100, 3)}%"
+    f"Testing done. Accuracy: {round(test_data['accuracy'] * 100, 3)}%"
 )
