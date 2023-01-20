@@ -41,7 +41,7 @@ class AFiMovementModel(nn.Module):
                 # Print updates every 100 batches
                 if batch_num % 100 == 0:
                     progress = round(
-                        (batch_num + (epoch * len(train_loader)))
+                        (batch_num + 1 + (epoch * len(train_loader)))
                         / (len(train_loader) * epochs)
                         * 100,
                         2,

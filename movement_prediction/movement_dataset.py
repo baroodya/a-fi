@@ -3,14 +3,13 @@ import numpy as np
 import yfinance as yf
 import torch
 from torch.utils.data import Dataset
-from constants import TICKER_SYMBOLS
 
 
 class MovementFeatureDataset(Dataset):
-    def __init__(self, file_name, scale=True):
+    def __init__(self, ticker_symbols):
 
         df = pd.DataFrame()
-        for symbol in TICKER_SYMBOLS:
+        for i, symbol in enumerate(ticker_symbols):
             stock = yf.Ticker(symbol)
             df = pd.concat(
                 [df, stock.history(period="max").reset_index()]
@@ -26,6 +25,12 @@ class MovementFeatureDataset(Dataset):
 
             # convert types
             df = df.astype({"Next Day Movement": "int"})
+
+            print(
+                f"Collecting the most recent financial data. Progress: {round((i+1)/len(ticker_symbols) *100, 2)}%.",
+                end="\r",
+            )
+        print("\nDone!")
         df = df.drop(columns=["Dividends"])
 
         # normalize feature columns

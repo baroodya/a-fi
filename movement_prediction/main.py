@@ -4,15 +4,15 @@ import numpy as np
 from torch.utils.data.sampler import SubsetRandomSampler
 from movement_dataset import MovementFeatureDataset
 from model import AFiMovementModel
-from constants import CURRENT_MODEL_PATH
+from constants import (
+    CURRENT_MODEL_PATH,
+    TRAIN_TICKER_SYMBOLS,
+    TEST_TICKER_SYMBOLS,
+)
 
 
-training_dataset = MovementFeatureDataset(
-    "./movement_prediction/data/Top 15 Movement Data.csv"
-)
-test_dataset = MovementFeatureDataset(
-    "./movement_prediction/data/Test Data (IBM).csv"
-)
+training_dataset = MovementFeatureDataset(TRAIN_TICKER_SYMBOLS)
+test_dataset = MovementFeatureDataset(TEST_TICKER_SYMBOLS)
 training_batch_size = 1
 validation_split = 0.1
 shuffle_dataset = True
@@ -56,8 +56,6 @@ print(f"Using {device} device")
 loss_func = torch.nn.BCELoss()
 model = AFiMovementModel(num_features, loss_func).to(device)
 print(f"Model: {model}")
-# for param in model.parameters():
-#     print(param)
 
 # define optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
