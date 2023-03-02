@@ -7,10 +7,6 @@ from movement_dataset import MovementFeatureDataset
 from model import AFiMovementModel
 from constants import CURRENT_MODEL_PATH
 
-model = AFiMovementModel()
-print(f"Model: {model}")
-model.load_state_dict(torch.load(CURRENT_MODEL_PATH))
-
 starting_value = 100
 starting_shares = 0
 
@@ -28,6 +24,10 @@ test_loader = torch.utils.data.DataLoader(
     test_dataset,
     batch_size=1,
 )
+
+model = AFiMovementModel()
+print(f"Model: {model}")
+model.load_state_dict(torch.load(CURRENT_MODEL_PATH))
 
 curr_value = starting_value
 curr_shares = starting_shares

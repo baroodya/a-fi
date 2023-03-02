@@ -5,13 +5,11 @@ class AFiMovementModel(nn.Module):
     def __init__(self, input_size, loss_function):
         super(AFiMovementModel, self).__init__()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_size, 200),
+            nn.Linear(input_size, 32),
             nn.ReLU(),
-            nn.Linear(200, 200),
+            nn.Linear(32, 64),
             nn.ReLU(),
-            nn.Linear(200, 200),
-            nn.ReLU(),
-            nn.Linear(200, 1),
+            nn.Linear(64, 1),
             nn.Sigmoid(),
             nn.Flatten(0, 1),
         )
@@ -23,16 +21,18 @@ class AFiMovementModel(nn.Module):
         return logits
 
     def train(self, train_loader, optimizer, epochs):
-        running_loss = 0
+        losses = []
         for epoch in range(epochs):
             # batch training
+            running_loss = 0
             batch_num = 1
             for features, target in train_loader:
-                self.zero_grad()
+                optimizer.zero_grad()
 
                 # forward pass
                 output = self(features)
                 loss = self.loss_func(output, target)
+                losses.append(loss.item())
 
                 # backward pass
                 loss.backward()
@@ -47,13 +47,14 @@ class AFiMovementModel(nn.Module):
                         2,
                     )
                     print(
-                        f"Training on {len(train_loader)} datapoints. Progress: {progress}%. Avg. Loss: {running_loss / (batch_num + (epoch * len(train_loader)))}",
+                        f"Training on {epochs * len(train_loader)} batches. Progress: {progress}%. Avg. Loss: {running_loss / (batch_num + (epoch * len(train_loader)))}",
                         end="\r",
                     )
                 batch_num += 1
                 running_loss += loss.item()
 
         print()
+        return losses
 
     def test(self, loader):
         num_correct = 0
