@@ -9,7 +9,7 @@ class MovementFeatureDataset(torch.utils.data.Dataset):
         for i, symbol in enumerate(ticker_symbols):
             try:
                 stock = yf.Ticker(symbol)
-                df = stock.history(period="max").reset_index()
+                df = stock.history(period="20y").reset_index()
 
                 for j in range(len_history):
                     df[f"{j+1} Day(s) Ago Close"] = df["Close"].shift(
@@ -52,6 +52,7 @@ class MovementFeatureDataset(torch.utils.data.Dataset):
         normalized_df = final_df[feature_cols].apply(
             lambda x: (x - x.mean()) / x.std(), axis=0
         )
+        normalized_df["Next Day Movement"] = final_df["Next Day Movement"]
         num_features = final_df.shape[1] - 1
 
         x = normalized_df.iloc[:-1, :num_features].to_numpy(dtype=float)

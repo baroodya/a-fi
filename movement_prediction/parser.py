@@ -47,6 +47,14 @@ def parse_args():
         nargs=1,
         help="the fraction of training data used for validation",
     )
+    parser.add_argument(
+        "-ts",
+        "--num-ticker-symbols",
+        metavar="t",
+        type=int,
+        nargs=1,
+        help="the number of ticker symbols from which to fetch data",
+    )
     parser.set_defaults(
         batch_size=[64],
         days_prior=[7],
@@ -55,5 +63,6 @@ def parse_args():
         shuffle_dataset=[True],
         use_pretrained=[False],
         val_split=[0.1],
+        num_ticker_symbols=[500],
     )
     return parser.parse_args()

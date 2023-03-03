@@ -2,22 +2,15 @@ import torch.nn as nn
 
 
 class AFiMovementModel(nn.Module):
-    def __init__(self, input_size, loss_function):
+    def __init__(self, input_size, loss_function, model):
         super(AFiMovementModel, self).__init__()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_size, 32),
-            nn.ReLU(),
-            nn.Linear(32, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-            nn.Sigmoid(),
-            nn.Flatten(0, 1),
-        )
+        self.model = model(input_size)
+        print(self.model)
 
         self.loss_func = loss_function
 
     def forward(self, x):
-        logits = self.linear_relu_stack(x)
+        logits = self.model(x)
         return logits
 
     def train(self, train_loader, optimizer, epochs):
@@ -27,14 +20,16 @@ class AFiMovementModel(nn.Module):
             running_loss = 0
             batch_num = 1
             for features, target in train_loader:
-                optimizer.zero_grad()
-
                 # forward pass
-                output = self(features)
-                loss = self.loss_func(output, target)
+                prediction = self.forward(features)
+                loss = self.loss_func(prediction, target)
+                # print(
+                #     f"Prediction: {prediction}\nTarget: {target}\nLoss: {loss}\n")
+
                 losses.append(loss.item())
 
                 # backward pass
+                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
@@ -47,11 +42,14 @@ class AFiMovementModel(nn.Module):
                         2,
                     )
                     print(
-                        f"Training on {epochs * len(train_loader)} batches. Progress: {progress}%. Avg. Loss: {running_loss / (batch_num + (epoch * len(train_loader)))}",
+                        f"Training on {epochs * len(train_loader)} batches. Progress: {progress}%. Avg. Loss: {round(running_loss / batch_num, 5)}. Last output: {prediction[0].item()}.",
                         end="\r",
                     )
-                batch_num += 1
-                running_loss += loss.item()
+                    batch_num = 1
+                    running_loss = 0
+                else:
+                    batch_num += 1
+                    running_loss += loss.item()
 
         print()
         return losses
