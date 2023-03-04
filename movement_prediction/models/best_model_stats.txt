@@ -1,0 +1,3 @@
+training:      48.53%
+validation:      52.25%
+test:      53.33%
