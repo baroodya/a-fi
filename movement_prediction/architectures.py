@@ -36,14 +36,14 @@ def createDeepModel(input_size):
 
 
 class MovementShallowRegressionLSTM(torch.nn.Module):
-    def __init__(self, num_sensors, hidden_units):
+    def __init__(self, num_features, hidden_units):
         super().__init__()
-        self.num_sensors = num_sensors  # this is the number of features
+        self.num_sensors = num_features  # this is the number of features
         self.hidden_units = hidden_units
         self.num_layers = 1
 
         self.lstm = torch.nn.LSTM(
-            input_size=num_sensors,
+            input_size=num_features,
             hidden_size=hidden_units,
             batch_first=True,
             num_layers=self.num_layers

@@ -65,13 +65,13 @@ def parse_args():
         help="the number of ticker symbols from which to fetch data",
     )
     parser.set_defaults(
-        predict_movement=[False],
+        predict_movement=False,
         batch_size=[64],
         days_prior=[7],
         epochs=[50],
         learning_rate=[1e-3],
-        shuffle_dataset=[False],
-        use_pretrained=[False],
+        shuffle_dataset=False,
+        use_pretrained=False,
         val_split=[0.2],
         test_split=[0.1],
         num_ticker_symbols=[500],
