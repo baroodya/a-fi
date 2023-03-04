@@ -9,33 +9,33 @@ def parse_args():
     parser.add_argument(
         "-dp",
         "--days-prior",
-        metavar="d",
+        metavar="days taken into account for time series",
         type=int,
-        nargs=1,
+        nargs="*",
         help="the number of days prior a single datapoint includes",
     )
     parser.add_argument(
         "-e",
         "--epochs",
-        metavar="e",
+        metavar="number of epochs",
         type=int,
-        nargs=1,
+        nargs="*",
         help="the number of cycles through the data during training",
     )
     parser.add_argument(
         "-lr",
         "--learning-rate",
-        metavar="l",
+        metavar="learning rate",
         type=float,
-        nargs=1,
+        nargs="*",
         help="the rate wat which the model learns",
     )
     parser.add_argument(
         "-m",
         "--batch-size",
-        metavar="m",
+        metavar="batch size",
         type=int,
-        nargs=1,
+        nargs="*",
         help="the number of datapoints in a batch",
     )
     parser.add_argument("--shuffle-dataset", action="store_true")
@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument(
         "-p",
         "--val-split",
-        metavar="p",
+        metavar="validation split",
         type=float,
         nargs=1,
         help="the fraction of training data used for validation",
@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument(
         "-q",
         "--test-split",
-        metavar="q",
+        metavar="test split",
         type=float,
         nargs=1,
         help="the fraction of training data used for testing",
@@ -59,9 +59,9 @@ def parse_args():
     parser.add_argument(
         "-ts",
         "--num-ticker-symbols",
-        metavar="t",
+        metavar="number of ticker symbols used",
         type=int,
-        nargs=1,
+        nargs="*",
         help="the number of ticker symbols from which to fetch data",
     )
     parser.set_defaults(

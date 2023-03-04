@@ -3,6 +3,8 @@ import pandas as pd
 import requests
 import yfinance as yf
 
+from constants import SINGLE_TICKER_SYMBOL
+
 
 def pre_process_data(num_ticker_symbols, validation_split, test_split):
     ticker_symbols = get_ticker_symbols(num_ticker_symbols)
@@ -33,7 +35,6 @@ def pre_process_data(num_ticker_symbols, validation_split, test_split):
             end="\r",
         )
     print("\nDone!")
-    print(final_df)
 
     test_start = int(len(final_df) * (1-test_split))
     val_start = int(test_start - (len(final_df) * validation_split))

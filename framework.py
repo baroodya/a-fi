@@ -1,7 +1,6 @@
 class BaseFramework():
     def __init__(self, model, loss_function, optimizer):
         self.model = model
-        print(f"Using the following architecture: {self.model}")
 
         self.loss_func = loss_function
         self.optimizer = optimizer
