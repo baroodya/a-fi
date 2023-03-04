@@ -1,4 +1,4 @@
-class AFiMovementModel():
+class BaseFramework():
     def __init__(self, model, loss_function, optimizer):
         self.model = model
         print(f"Using the following architecture: {self.model}")
@@ -46,7 +46,7 @@ class AFiMovementModel():
         print()
         return losses
 
-    def test(self, loader, predict_movement=False, threshold=0.1):
+    def eval(self, loader, predict_movement=False, threshold=0.1):
         num_correct = 0
         num_seen = 0
         running_loss = 0

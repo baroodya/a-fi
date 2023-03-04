@@ -1,10 +1,4 @@
-import bs4 as bs
-import pandas as pd
-import yfinance as yf
 import matplotlib.pyplot as plt
-import numpy as np
-import requests
-import time
 import re
 
 from constants import (
@@ -16,21 +10,24 @@ from constants import (
     STATS_FILE_NAME,
     SINGLE_TICKER_SYMBOL,
 )
+from dataset import FeatureDataset
+from framework import BaseFramework
+import parser
 from preprocessing import pre_process_data
+
 from movement_prediction.architectures import (
     MovementShallowRegressionLSTM
 )
 from price_prediction.architectures import (
     ShallowRegressionLSTM
 )
-from model import AFiMovementModel
-from dataset import FeatureDataset
-import parser
 
 import torch
 from torch.utils.data import DataLoader
+# -----------------------------------------------------------------------------------------#
+# Collect Hyperparameters                                                                  #
+# -----------------------------------------------------------------------------------------#
 
-# Collect Hyperparameters
 args = parser.parse_args()
 
 predict_movement = args.predict_movement[0]
@@ -43,6 +40,7 @@ epochs = args.epochs[0]
 days_prior = args.days_prior[0]
 use_pretrained = args.use_pretrained[0]
 hidden_units = 16
+num_ticker_symbols = args.num_ticker_symbols[0]
 
 architectures = []
 if predict_movement:
@@ -50,26 +48,14 @@ if predict_movement:
 else:
     architectures.append(ShallowRegressionLSTM)
 
-# num_ticker_symbols = args.num_ticker_symbols[0]
 
-# # Get s&p 500 ticker symbols from wikipedia
-# resp = requests.get(
-#     "http://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-# )
-# soup = bs.BeautifulSoup(resp.text, "lxml")
-# table = soup.find("table", {"class": "wikitable sortable"})
-
-# ticker_symbols = []
-
-# for row in table.findAll("tr")[1:num_ticker_symbols + 1]:
-#     ticker = row.findAll("td")[0].text.strip()
-#     ticker_symbols.append(ticker)
-
-ticker_symbols = SINGLE_TICKER_SYMBOL
-
-# Create the dataset
+# -----------------------------------------------------------------------------------------#
+# Create the datasets                                                                      #
+# -----------------------------------------------------------------------------------------#
 training_df, val_df, test_df, feature_columns, target_columns = pre_process_data(
-    ticker_symbols=ticker_symbols, validation_split=validation_split, test_split=test_split
+    num_ticker_symbols=num_ticker_symbols,
+    validation_split=validation_split,
+    test_split=test_split,
 )
 
 num_features = len(feature_columns)
@@ -94,7 +80,9 @@ training_loader = DataLoader(
 val_loader = DataLoader(val_dataset, batch_size=1, shuffle=shuffle_dataset)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=shuffle_dataset)
 
-# Model , Optimizer, Loss
+# -----------------------------------------------------------------------------------------#
+# Model, Optimizer, Loss                                                                   #
+# -----------------------------------------------------------------------------------------#
 model = architectures[0](
     num_sensors=num_features, hidden_units=hidden_units)
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -106,26 +94,36 @@ if predict_movement:
     loss_fn = torch.nn.BCELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-framework = AFiMovementModel(
+# -----------------------------------------------------------------------------------------#
+# Train the model                                                                          #
+# -----------------------------------------------------------------------------------------#
+framework = BaseFramework(
     model=model, loss_function=loss_fn, optimizer=optimizer)
 
 losses = framework.train(train_loader=training_loader, epochs=epochs)
 
-train_data = framework.test(training_loader, predict_movement=predict_movement)
+# -----------------------------------------------------------------------------------------#
+# Evaluate the model                                                                       #
+# -----------------------------------------------------------------------------------------#
+train_data = framework.eval(training_loader, predict_movement=predict_movement)
 print(
     f"Training done. Accuracy: {round(train_data['accuracy'] * 100, 3)}%"
 )
 
-validation_data = framework.test(val_loader, predict_movement=predict_movement)
+validation_data = framework.eval(val_loader, predict_movement=predict_movement)
 print(
     f"Validation done. Accuracy: {round(validation_data['accuracy'] * 100, 3)}%"
 )
 
-test_data = framework.test(
+test_data = framework.eval(
     test_loader, predict_movement=predict_movement, threshold=1)
 print(
     f"Testing done. Accuracy: {round(test_data['accuracy'] * 100, 3)}%"
 )
+
+# -----------------------------------------------------------------------------------------#
+# Update best stats and weights                                                            #
+# -----------------------------------------------------------------------------------------#
 
 current_model_path = PRICE_MODEL_PATH
 if predict_movement:

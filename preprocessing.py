@@ -1,8 +1,11 @@
+import bs4 as bs
 import pandas as pd
+import requests
 import yfinance as yf
 
 
-def pre_process_data(ticker_symbols, validation_split, test_split):
+def pre_process_data(num_ticker_symbols, validation_split, test_split):
+    ticker_symbols = get_ticker_symbols(num_ticker_symbols)
     final_df = pd.DataFrame()
     for i, symbol in enumerate(ticker_symbols):
         try:
@@ -51,3 +54,21 @@ def pre_process_data(ticker_symbols, validation_split, test_split):
         test_df[c] = (test_df[c] - train_mean) / train_stddev
 
     return train_df, val_df, test_df, feature_columns, target_columns
+
+
+def get_ticker_symbols(num_ticker_symbols):
+    # Get s&p 500 ticker symbols from wikipedia
+    resp = requests.get(
+        "http://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    )
+    soup = bs.BeautifulSoup(resp.text, "lxml")
+    table = soup.find("table", {"class": "wikitable sortable"})
+
+    ticker_symbols = []
+
+    for row in table.findAll("tr")[1:num_ticker_symbols + 1]:
+        ticker = row.findAll("td")[0].text.strip()
+        ticker_symbols.append(ticker)
+
+    ticker_symbols = SINGLE_TICKER_SYMBOL
+    return ticker_symbols
