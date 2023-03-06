@@ -8,7 +8,7 @@ class BaseFramework():
     def train(self, train_loader, epochs):
         losses = []
         total_batch_count = 0
-        for epoch in range(epochs):
+        for _ in range(epochs):
             # batch training
             running_loss = 0
             batch_num = 1

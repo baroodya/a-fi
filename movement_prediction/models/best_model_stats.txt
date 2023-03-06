@@ -1,2 +1,2 @@
-training: MovementShallowRegressionLSTM 48.44%
-validation: MovementShallowRegressionLSTM 50.14%
+training: MovementShallowRegressionLSTM 4844000000000000876354224495490182984184544924532736.00%
+validation: MovementShallowRegressionLSTM 5013999999999999705481149479405691584832822312960000.00%

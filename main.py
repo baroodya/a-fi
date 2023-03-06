@@ -11,10 +11,11 @@ from constants import (
     STATS_FILE_NAME,
     SINGLE_TICKER_SYMBOL,
 )
+from real_eval import real_movement_eval, price_check
 from dataset import FeatureDataset
 from framework import BaseFramework
 import parser
-from preprocessing import pre_process_data
+from preprocessing import (pre_process_data, normalize_pre_processed_data)
 
 from movement_prediction.architectures import (
     MovementShallowRegressionLSTM
@@ -84,11 +85,13 @@ Architecture: {architecture.__name__}
         # -----------------------------------------------------------------------------------------#
         # Create the datasets                                                                      #
         # -----------------------------------------------------------------------------------------#
-        training_df, val_df, _, feature_columns, target_columns = pre_process_data(
+        unnormalized_train_df, unnormalized_val_df, unnormalized_test_df = pre_process_data(
             num_ticker_symbols=num_ticker_symbols,
             validation_split=validation_split,
             test_split=test_split,
         )
+        training_df, val_df, _, feature_columns, target_columns = normalize_pre_processed_data(
+            unnormalized_train_df, unnormalized_val_df, unnormalized_test_df)
 
         num_features = len(feature_columns)
         target_idx = 1
@@ -188,11 +191,18 @@ Architecture: {architecture.__name__}
             f.write(
                 f"training: {best_training_model} {best_training_acc * 100:.2f}%\nvalidation: {best_val_model} {best_val_acc * 100:.2f}%")
 
-_, _, test_df, feature_columns, target_columns = pre_process_data(
-    num_ticker_symbols=num_ticker_symbols,
+# TODO: Add hyperparameter storage in addition to model name and weights
+days_prior = days_prior_arr[0]
+learning_rate = learning_rates[0]
+train_df, val_df, unnormalized_test_df = pre_process_data(
+    num_ticker_symbols=num_ticker_symbols[-1],
     validation_split=validation_split,
     test_split=test_split,
 )
+
+_, _, test_df, feature_columns, target_columns = normalize_pre_processed_data(
+    train_df, val_df, unnormalized_test_df)
+
 
 current_model_path = PRICE_MODEL_PATH
 if predict_movement:
@@ -206,12 +216,31 @@ model_class = globals()[best_val_model]
 model = model_class(len(feature_columns), hidden_units)
 model.load_state_dict(torch.load(current_model_path + VAL_WEIGHTS_FILE_NAME))
 
+target_idx = 1
+if predict_movement:
+    target_idx = 0
+
 test_dataset = FeatureDataset(
     dataframe=test_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior)
 test_loader = DataLoader(
-    test_dataset, batch_size=1, shuffle=shuffle_dataset)
+    test_dataset, batch_size=1, shuffle=False)
+
+loss_fn = torch.nn.MSELoss()
+if predict_movement:
+    loss_fn = torch.nn.BCELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+framework = BaseFramework(
+    model=model, loss_function=loss_fn, optimizer=optimizer)
+
 test_data = framework.eval(
     test_loader, predict_movement=predict_movement, threshold=1)
 print(
-    f"Testing done using {model.__name__}. Accuracy: {round(test_data['accuracy'] * 100, 3)}%"
+    f"Testing done using {model.__class__.__name__}. Accuracy: {round(test_data['accuracy'] * 100, 3)}%"
 )
+starting_value = 100
+eval = price_check
+if predict_movement:
+    eval = real_movement_eval
+regular_strat, model_based_strat = eval(
+    model, unnormalized_test_df, test_loader, starting_value)
+print(f"If you invested ${starting_value}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than just buying and holding.")

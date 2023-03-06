@@ -48,6 +48,7 @@ class MovementShallowRegressionLSTM(torch.nn.Module):
             batch_first=True,
             num_layers=self.num_layers
         )
+        self.relu = torch.nn.ReLU()
 
         self.linear = torch.nn.Linear(
             in_features=self.hidden_units, out_features=1)
@@ -62,8 +63,10 @@ class MovementShallowRegressionLSTM(torch.nn.Module):
                          self.hidden_units).requires_grad_()
 
         _, (hn, _) = self.lstm(x, (h0, c0))
-        # First dim of Hn is num_layers, which is set to 1 above.
-        out = self.linear(hn[0]).flatten()
+
+        out = hn.view(-1, self.hidden_units)
+        out = self.relu(out)
+        out = self.linear(out).flatten()
         out = self.sigmoid(out)
 
         return out

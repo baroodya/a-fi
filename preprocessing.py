@@ -43,18 +43,27 @@ def pre_process_data(num_ticker_symbols, validation_split, test_split):
     val_df = final_df.loc[val_start:test_start].copy()
     test_df = final_df.loc[test_start:].copy()
 
+    # print(test_df)
+    return train_df, val_df, test_df
+
+
+def normalize_pre_processed_data(train_df, val_df, test_df):
     # normalize feature columns
     target_columns = ["Next Day Movement", "Next Day Close"]
     feature_columns = train_df.columns.difference(target_columns)
+
+    norm_train_df = train_df.copy()
+    norm_val_df = val_df.copy()
+    norm_test_df = test_df.copy()
     for c in feature_columns:
         train_mean = train_df[c].mean()
         train_stddev = train_df[c].std()
 
-        train_df[c] = (train_df[c] - train_mean) / train_stddev
-        val_df[c] = (val_df[c] - train_mean) / train_stddev
-        test_df[c] = (test_df[c] - train_mean) / train_stddev
+        norm_train_df[c] = (train_df[c] - train_mean) / train_stddev
+        norm_val_df[c] = (val_df[c] - train_mean) / train_stddev
+        norm_test_df[c] = (test_df[c] - train_mean) / train_stddev
 
-    return train_df, val_df, test_df, feature_columns, target_columns
+    return norm_train_df, norm_val_df, norm_test_df, feature_columns, target_columns
 
 
 def get_ticker_symbols(num_ticker_symbols):
