@@ -1,15 +1,15 @@
 import itertools
+from datetime import datetime
+import json
 import matplotlib.pyplot as plt
-import re
 
 from constants import (
     MOVEMENT_MODEL_PATH,
     PRICE_MODEL_PATH,
     TRAINING_WEIGHTS_FILE_NAME,
     VAL_WEIGHTS_FILE_NAME,
-    TEST_WEIGHTS_FILE_NAME,
-    STATS_FILE_NAME,
-    SINGLE_TICKER_SYMBOL,
+    TRAIN_STATS_FILE_NAME,
+    VAL_STATS_FILE_NAME,
 )
 from real_eval import real_movement_eval, price_check
 from dataset import FeatureDataset
@@ -40,8 +40,8 @@ learning_rates = args.learning_rate
 epochs_arr = args.epochs
 days_prior_arr = args.days_prior
 use_pretrained = args.use_pretrained
-hidden_units = 16
-num_ticker_symbols = args.num_ticker_symbols
+num_hidden_units_arr = args.num_hidden_units
+num_ticker_symbols = args.num_ticker_symbols[0]
 
 architectures = []
 if predict_movement:
@@ -60,15 +60,15 @@ if not use_pretrained:
         learning_rate,
         epochs,
         days_prior,
-        num_ticker_symbols,
         architecture,
+        num_hidden_units,
     ) in enumerate(get_hyperparameter_combos([
         training_batch_sizes,
         learning_rates,
         epochs_arr,
         days_prior_arr,
-        num_ticker_symbols,
         architectures,
+        num_hidden_units_arr,
     ])):
         print(f"""
 -------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ Training Batch Size: {training_batch_size}
 Learning Rate: {learning_rate}
 Number of Epochs: {epochs}
 History Considered: {days_prior}
-Number of Ticker Symbols: {num_ticker_symbols}
+Number of Hidden Units: {num_hidden_units}
 Architecture: {architecture.__name__}
 -------------------------------------------------------------------------------------
 
@@ -116,7 +116,7 @@ Architecture: {architecture.__name__}
         # Model, Optimizer, Loss                                                                   #
         # -----------------------------------------------------------------------------------------#
         model = architectures[0](
-            num_features=num_features, hidden_units=hidden_units)
+            num_features=num_features, hidden_units=num_hidden_units)
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using {device} device")
         model.to(device)
@@ -143,10 +143,10 @@ Architecture: {architecture.__name__}
             f"Training done. Accuracy: {round(train_data['accuracy'] * 100, 3)}%"
         )
 
-        validation_data = framework.eval(
+        val_data = framework.eval(
             val_loader, predict_movement=predict_movement)
         print(
-            f"Validation done. Accuracy: {round(validation_data['accuracy'] * 100, 3)}%"
+            f"Validation done. Accuracy: {round(val_data['accuracy'] * 100, 3)}%"
         )
 
         # -----------------------------------------------------------------------------------------#
@@ -157,45 +157,48 @@ Architecture: {architecture.__name__}
         if predict_movement:
             current_model_path = MOVEMENT_MODEL_PATH
 
-        best_training_acc = 0.0
-        best_val_acc = 0.0
+        # TODO: Make this a utility function for cleanliness
+        with open(current_model_path + TRAIN_STATS_FILE_NAME, 'r+') as f:
+            best_data = json.load(f)
 
-        with open(current_model_path + STATS_FILE_NAME, 'r+') as f:
-            lines = f.readlines()
-
-            best_training_acc = float(re.findall(r"\d+\.\d+", lines[0])[0])
-            best_training_model = re.findall(
-                r"(?<=\btraining:\s)\w+", lines[0])[0]
-            best_val_acc = float(re.findall(r"\d+\.\d+", lines[1])[0])
-            best_val_model = re.findall(
-                r"(?<=\bvalidation:\s)(\w+)", lines[1])[0]
-
-            if train_data['accuracy'] > best_training_acc:
+            if train_data['accuracy'] > best_data["accuracy"]:
                 torch.save(
                     model.state_dict(),
                     current_model_path + TRAINING_WEIGHTS_FILE_NAME,
                 )
-                best_training_acc = train_data["accuracy"]
-                best_training_model = model.__class__.__name__
+                best_data["accuracy"] = train_data["accuracy"]
+                best_data["model_name"] = model.__class__.__name__
+                best_data["days_prior"] = days_prior
+                best_data["hidden_units"] = num_hidden_units
+                best_data["date"] = datetime.now().strftime(
+                    "%d/%m/%Y, %H:%M:%S")
 
-            if validation_data['accuracy'] > best_val_acc:
+            f.seek(0)
+            f.truncate()
+            json.dump(best_data, f)
+
+        with open(current_model_path + VAL_STATS_FILE_NAME, 'r+') as f:
+            best_data = json.load(f)
+
+            if val_data['accuracy'] > best_data["accuracy"]:
                 torch.save(
                     model.state_dict(),
                     current_model_path + VAL_WEIGHTS_FILE_NAME,
                 )
-                best_val_acc = validation_data["accuracy"]
-                best_val_model = model.__class__.__name__
+                best_data["accuracy"] = train_data["accuracy"]
+                best_data["model_name"] = model.__class__.__name__
+                best_data["days_prior"] = days_prior
+                best_data["hidden_units"] = num_hidden_units
+                best_data["date"] = datetime.now().strftime(
+                    "%d/%m/%Y, %H:%M:%S")
 
             f.seek(0)
             f.truncate()
-            f.write(
-                f"training: {best_training_model} {best_training_acc * 100:.2f}%\nvalidation: {best_val_model} {best_val_acc * 100:.2f}%")
+            json.dump(best_data, f)
 
-# TODO: Add hyperparameter storage in addition to model name and weights
-days_prior = days_prior_arr[0]
-learning_rate = learning_rates[0]
+# TODO: Make loading for testing and training cleaner and more space efficient
 train_df, val_df, unnormalized_test_df = pre_process_data(
-    num_ticker_symbols=num_ticker_symbols[-1],
+    num_ticker_symbols=num_ticker_symbols,
     validation_split=validation_split,
     test_split=test_split,
 )
@@ -207,13 +210,13 @@ _, _, test_df, feature_columns, target_columns = normalize_pre_processed_data(
 current_model_path = PRICE_MODEL_PATH
 if predict_movement:
     current_model_path = MOVEMENT_MODEL_PATH
-with open(current_model_path + STATS_FILE_NAME, 'r') as f:
-    lines = f.readlines()
+with open(current_model_path + VAL_STATS_FILE_NAME, 'r') as f:
+    best_data = json.load(f)
+model_class = globals()[best_data["model_name"]]
+days_prior = best_data["days_prior"]
+num_hidden_units = best_data["hidden_units"]
 
-    best_val_model = re.findall(
-        r"(?<=\bvalidation:\s)(\w+)", lines[1])[0]
-model_class = globals()[best_val_model]
-model = model_class(len(feature_columns), hidden_units)
+model = model_class(len(feature_columns), num_hidden_units)
 model.load_state_dict(torch.load(current_model_path + VAL_WEIGHTS_FILE_NAME))
 
 target_idx = 1
@@ -225,10 +228,11 @@ test_dataset = FeatureDataset(
 test_loader = DataLoader(
     test_dataset, batch_size=1, shuffle=False)
 
+# TODO: Remove need for optimizer
 loss_fn = torch.nn.MSELoss()
 if predict_movement:
     loss_fn = torch.nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=0)
 framework = BaseFramework(
     model=model, loss_function=loss_fn, optimizer=optimizer)
 

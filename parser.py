@@ -61,8 +61,16 @@ def parse_args():
         "--num-ticker-symbols",
         metavar="number of ticker symbols used",
         type=int,
-        nargs="*",
+        nargs=1,
         help="the number of ticker symbols from which to fetch data",
+    )
+    parser.add_argument(
+        "-hu",
+        "--num-hidden-units",
+        metavar="number of hidden units",
+        type=int,
+        nargs="*",
+        help="the number of hidden units in the LSTM model",
     )
     parser.set_defaults(
         predict_movement=False,
@@ -75,5 +83,6 @@ def parse_args():
         val_split=[0.2],
         test_split=[0.1],
         num_ticker_symbols=[500],
+        num_hidden_units=[16],
     )
     return parser.parse_args()

@@ -7,9 +7,10 @@ PRICE_MODEL_PATH = (
 )
 
 TRAINING_WEIGHTS_FILE_NAME = "best_training_model_weights.pth"
+TRAIN_STATS_FILE_NAME = "best_training_model.json"
+
 VAL_WEIGHTS_FILE_NAME = "best_val_model_weights.pth"
-TEST_WEIGHTS_FILE_NAME = "best_test_model_weights.pth"
-STATS_FILE_NAME = "best_model_stats.txt"
+VAL_STATS_FILE_NAME = "best_val_model.json"
 
 TRAIN_TICKER_SYMBOLS = [
     "AAPL",
