@@ -37,6 +37,7 @@ validation_split = args.val_split[0]
 test_split = args.test_split[0]
 shuffle_dataset = args.shuffle_dataset
 learning_rates = args.learning_rate
+weight_decays = args.weight_decay
 epochs_arr = args.epochs
 days_prior_arr = args.days_prior
 use_pretrained = args.use_pretrained
@@ -58,6 +59,7 @@ if not use_pretrained:
     for i, (
         training_batch_size,
         learning_rate,
+        weight_decay,
         epochs,
         days_prior,
         architecture,
@@ -65,6 +67,7 @@ if not use_pretrained:
     ) in enumerate(get_hyperparameter_combos([
         training_batch_sizes,
         learning_rates,
+        weight_decays,
         epochs_arr,
         days_prior_arr,
         architectures,
@@ -124,7 +127,8 @@ Architecture: {architecture.__name__}
         loss_fn = torch.nn.MSELoss()
         if predict_movement:
             loss_fn = torch.nn.BCELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
         # -----------------------------------------------------------------------------------------#
         # Train the model                                                                          #

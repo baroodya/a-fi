@@ -28,7 +28,15 @@ def parse_args():
         metavar="learning rate",
         type=float,
         nargs="*",
-        help="the rate wat which the model learns",
+        help="the rate at which the model learns",
+    )
+    parser.add_argument(
+        "-wd",
+        "--weight-decay",
+        metavar="weight decay",
+        type=float,
+        nargs="*",
+        help="weight decay for L2 regularization",
     )
     parser.add_argument(
         "-m",
@@ -78,6 +86,7 @@ def parse_args():
         days_prior=[7],
         epochs=[50],
         learning_rate=[1e-3],
+        weight_decay=[1e-3],
         shuffle_dataset=False,
         use_pretrained=False,
         val_split=[0.2],
