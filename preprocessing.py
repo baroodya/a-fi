@@ -50,7 +50,7 @@ def pre_process_data(num_ticker_symbols, validation_split, test_split):
 def normalize_pre_processed_data(train_df, val_df, test_df):
     # normalize feature columns
     target_columns = ["Next Day Movement", "Next Day Close"]
-    feature_columns = train_df.columns.difference(target_columns)
+    feature_columns = train_df.columns.difference([target_columns[0]])
 
     norm_train_df = train_df.copy()
     norm_val_df = val_df.copy()

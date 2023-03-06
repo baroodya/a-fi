@@ -55,6 +55,7 @@ def get_hyperparameter_combos(*hyperparameters):
     return list(itertools.product(*hyperparameters[0]))
 
 
+# plt.ion()
 if not use_pretrained:
     for i, (
         training_batch_size,
@@ -154,6 +155,22 @@ Architecture: {architecture.__name__}
         )
 
         # -----------------------------------------------------------------------------------------#
+        # Plot results                                                                       #
+        # -----------------------------------------------------------------------------------------#
+        plt.plot(unnormalized_train_df["Date"],
+                 train_data["predictions"], label="Prediction")
+        plt.plot(unnormalized_train_df["Date"],
+                 training_df["Next Day Close"], label="Ground Truth")
+        plt.xlabel("Date")
+        plt.ylabel("Predicted Values")
+        plt.show()
+        # plt.plot(unnormalized_val_df["Date"],
+        #          val_data["predictions"], label="Prediction")
+        # plt.plot(unnormalized_val_df["Date"],
+        #          val_df["Next Day Close"], label="Ground Truth")
+        # plt.show()
+
+        # -----------------------------------------------------------------------------------------#
         # Update best stats and weights                                                            #
         # -----------------------------------------------------------------------------------------#
 
@@ -189,7 +206,7 @@ Architecture: {architecture.__name__}
                     model.state_dict(),
                     current_model_path + VAL_WEIGHTS_FILE_NAME,
                 )
-                best_data["accuracy"] = train_data["accuracy"]
+                best_data["accuracy"] = val_data["accuracy"]
                 best_data["model_name"] = model.__class__.__name__
                 best_data["days_prior"] = days_prior
                 best_data["hidden_units"] = num_hidden_units

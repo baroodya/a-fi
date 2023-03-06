@@ -50,11 +50,15 @@ class BaseFramework():
         num_seen = 0
         running_loss = 0
         self.model.eval()
+
+        outputs = []
         for features, label in loader:
             batch_output = self.model.forward(features)
             running_loss += self.loss_func(batch_output, label)
 
             for output, label in zip(batch_output, label):
+                print(output.item(), label.item())
+                outputs.append(output.item())
                 if predict_movement:
                     if (
                         output > 0.5
@@ -71,4 +75,5 @@ class BaseFramework():
         return {
             "accuracy": num_correct / num_seen,
             "loss": running_loss / len(loader),
+            "predictions": outputs,
         }
