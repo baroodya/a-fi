@@ -158,13 +158,13 @@ Architecture: {architecture.__name__}
         train_data = framework.eval(
             training_loader, predict_movement=predict_movement)
         print(
-            f"Training done. Accuracy: {round(train_data['accuracy'] * 100, 3)}%"
+            f"Training done. Accuracy: {train_data['accuracy'] * 100:.2f}%"
         )
 
         val_data = framework.eval(
             val_loader, predict_movement=predict_movement)
         print(
-            f"Validation done. Accuracy: {round(val_data['accuracy'] * 100, 3)}%"
+            f"Validation done. Accuracy: {val_data['accuracy'] * 100:.2f}%"
         )
 
         # -----------------------------------------------------------------------------------------#
@@ -266,9 +266,9 @@ framework = BaseFramework(
     model=model, loss_function=loss_fn)
 
 test_data = framework.eval(
-    test_loader, predict_movement=predict_movement, threshold=1)
+    test_loader, predict_movement=predict_movement)
 print(
-    f"Testing done using {model.__class__.__name__}. Accuracy: {round(test_data['accuracy'] * 100, 3)}%"
+    f"Testing done using {model.__class__.__name__}. Accuracy: {test_data['accuracy'] * 100:.2f}%"
 )
 
 real_eval_df = pd.DataFrame()
