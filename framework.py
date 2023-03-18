@@ -2,13 +2,12 @@ import time
 
 
 class BaseFramework():
-    def __init__(self, model, loss_function, optimizer):
+    def __init__(self, model, loss_function):
         self.model = model
 
         self.loss_func = loss_function
-        self.optimizer = optimizer
 
-    def train(self, train_loader, epochs):
+    def train(self, train_loader, epochs, optimizer):
         losses = []
         total_batch_count = 0
         for _ in range(epochs):
@@ -26,16 +25,16 @@ class BaseFramework():
                 losses.append(loss.item())
 
                 # backward pass
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 loss.backward()
-                self.optimizer.step()
+                optimizer.step()
 
                 # Print updates every 100 batches
                 if batch_num % 10 == 0:
                     progress = (total_batch_count) / \
                         (len(train_loader) * epochs) * 100
                     print(
-                        f"Training on {epochs * len(train_loader)} batches. Progress: {progress:.2f}%. Avg. Loss: {running_loss / batch_num :.5f}. Last output: {prediction[0].item():.2f}.",
+                        f"Training on {epochs * len(train_loader)} batches. Progress: {progress:.2f}%. Avg. Loss: {running_loss / batch_num :.5f}.",
                         end="\r",
                     )
                     batch_num = 1

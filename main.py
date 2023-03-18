@@ -16,7 +16,7 @@ from real_eval import real_movement_eval, price_check
 from dataset import FeatureDataset
 from framework import BaseFramework
 import parser
-from preprocessing import (pre_process_data, normalize_pre_processed_data)
+from preprocessing import DataPreprocessor
 
 from movement_prediction.architectures import (
     MovementShallowRegressionLSTM
@@ -57,6 +57,26 @@ def get_hyperparameter_combos(*hyperparameters):
     return list(itertools.product(*hyperparameters[0]))
 
 
+# -----------------------------------------------------------------------------------------#
+# Preprocess the Data                                                                      #
+# -----------------------------------------------------------------------------------------#
+preprocessor = DataPreprocessor()
+preprocessor.pre_process_data(
+    num_ticker_symbols=num_ticker_symbols,
+    validation_split=validation_split,
+    test_split=test_split,
+)
+train_df, val_df, test_df = preprocessor.get_dfs()
+preprocessor.normalize_pre_processed_data()
+norm_train_df, norm_val_df, norm_test_df = preprocessor.get_norm_dfs()
+feature_columns = preprocessor.get_feature_columns()
+target_columns = preprocessor.get_target_columns()
+
+num_features = len(feature_columns)
+target_idx = 1
+if predict_movement:
+    target_idx = 0
+
 # plt.ion()
 if not use_pretrained:
     for i, (
@@ -92,26 +112,13 @@ Architecture: {architecture.__name__}
 
         """)
         # -----------------------------------------------------------------------------------------#
-        # Create the datasets                                                                      #
+        # Create the datasets and dataloaders                                             #
         # -----------------------------------------------------------------------------------------#
-        unnormalized_train_df, unnormalized_val_df, unnormalized_test_df = pre_process_data(
-            num_ticker_symbols=num_ticker_symbols,
-            validation_split=validation_split,
-            test_split=test_split,
-        )
-        training_df, val_df, _, feature_columns, target_columns = normalize_pre_processed_data(
-            unnormalized_train_df, unnormalized_val_df, unnormalized_test_df)
-
-        num_features = len(feature_columns)
-        target_idx = 1
-        if predict_movement:
-            target_idx = 0
-
         training_dataset = FeatureDataset(
-            dataframe=training_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
+            dataframe=norm_train_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 
         val_dataset = FeatureDataset(
-            dataframe=val_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
+            dataframe=norm_val_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 
         # for repeatability
         torch.manual_seed(99)
@@ -140,9 +147,10 @@ Architecture: {architecture.__name__}
         # Train the model                                                                          #
         # -----------------------------------------------------------------------------------------#
         framework = BaseFramework(
-            model=model, loss_function=loss_fn, optimizer=optimizer)
+            model=model, loss_function=loss_fn)
 
-        losses = framework.train(train_loader=training_loader, epochs=epochs)
+        losses = framework.train(
+            train_loader=training_loader, epochs=epochs, optimizer=optimizer)
 
         # -----------------------------------------------------------------------------------------#
         # Evaluate the model                                                                       #
@@ -169,9 +177,9 @@ Architecture: {architecture.__name__}
         # plt.xlabel("Date")
         # plt.ylabel("Close")
         # plt.show()
-        plt.plot(unnormalized_train_df.index.values,
-                 training_df["Next Day Close"], label="Ground Truth")
-        plt.plot(unnormalized_train_df.index.values,
+        plt.plot(train_df.index.values,
+                 norm_train_df["Next Day Close"], label="Ground Truth")
+        plt.plot(train_df.index.values,
                  train_data["predictions"], label="Prediction")
         plt.xlabel("Date")
         plt.ylabel("Predicted Values")
@@ -230,17 +238,6 @@ Architecture: {architecture.__name__}
             f.truncate()
             json.dump(best_data, f)
 
-# TODO: Make loading for testing and training cleaner and more space efficient
-train_df, val_df, unnormalized_test_df = pre_process_data(
-    num_ticker_symbols=num_ticker_symbols,
-    validation_split=validation_split,
-    test_split=test_split,
-)
-
-_, _, test_df, feature_columns, target_columns = normalize_pre_processed_data(
-    train_df, val_df, unnormalized_test_df)
-
-
 current_model_path = PRICE_MODEL_PATH
 if predict_movement:
     current_model_path = MOVEMENT_MODEL_PATH
@@ -258,17 +255,15 @@ if predict_movement:
     target_idx = 0
 
 test_dataset = FeatureDataset(
-    dataframe=test_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
+    dataframe=norm_test_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 test_loader = DataLoader(
     test_dataset, batch_size=1, shuffle=False)
 
-# TODO: Remove need for optimizer
 loss_fn = torch.nn.MSELoss()
 if predict_movement:
     loss_fn = torch.nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0)
 framework = BaseFramework(
-    model=model, loss_function=loss_fn, optimizer=optimizer)
+    model=model, loss_function=loss_fn)
 
 test_data = framework.eval(
     test_loader, predict_movement=predict_movement, threshold=1)
@@ -277,8 +272,8 @@ print(
 )
 
 real_eval_df = pd.DataFrame()
-real_eval_df["Close"] = unnormalized_test_df["Close"]
-real_eval_df["Normalized Close"] = test_df["Close"]
+real_eval_df["Close"] = test_df["Close"]
+real_eval_df["Normalized Close"] = norm_test_df["Close"]
 starting_value = 100
 eval = price_check
 if predict_movement:
