@@ -177,10 +177,10 @@ Architecture: {architecture.__name__}
         # plt.xlabel("Date")
         # plt.ylabel("Close")
         # plt.show()
-        plt.plot(train_df.index.values,
-                 norm_train_df["Next Day Close"], label="Ground Truth")
-        plt.plot(train_df.index.values,
-                 train_data["predictions"], label="Prediction")
+        plt.plot(val_df.index.values,
+                 norm_val_df["Next Day Close"], label="Ground Truth")
+        plt.plot(val_df.index.values,
+                 val_data["predictions"], label="Prediction")
         plt.xlabel("Date")
         plt.ylabel("Predicted Values")
         plt.legend()
