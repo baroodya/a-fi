@@ -1,3 +1,6 @@
+import time
+
+
 class BaseFramework():
     def __init__(self, model, loss_function, optimizer):
         self.model = model
@@ -19,7 +22,7 @@ class BaseFramework():
                 loss = self.loss_func(prediction, target)
                 # print(
                 #     f"Prediction: {prediction}\nTarget: {target}\nLoss: {loss}\n")
-
+                # time.sleep(10)
                 losses.append(loss.item())
 
                 # backward pass
@@ -28,7 +31,7 @@ class BaseFramework():
                 self.optimizer.step()
 
                 # Print updates every 100 batches
-                if batch_num % 100 == 0:
+                if batch_num % 10 == 0:
                     progress = (total_batch_count) / \
                         (len(train_loader) * epochs) * 100
                     print(
@@ -57,7 +60,7 @@ class BaseFramework():
             running_loss += self.loss_func(batch_output, label)
 
             for output, label in zip(batch_output, label):
-                print(output.item(), label.item())
+                # print(output.item(), label.item())
                 outputs.append(output.item())
                 if predict_movement:
                     if (

@@ -15,6 +15,14 @@ def parse_args():
         help="the number of days prior a single datapoint includes",
     )
     parser.add_argument(
+        "-s",
+        "--sequence-sep",
+        metavar="Seperation of prediction time and feature sequence time",
+        type=int,
+        nargs="*",
+        help="the number of days of seperation between the predicted value and the sequence of values used for prediction",
+    )
+    parser.add_argument(
         "-e",
         "--epochs",
         metavar="number of epochs",
@@ -84,6 +92,7 @@ def parse_args():
         predict_movement=False,
         batch_size=[64],
         days_prior=[7],
+        sequence_sep=[0],
         epochs=[50],
         learning_rate=[1e-3],
         weight_decay=[1e-3],

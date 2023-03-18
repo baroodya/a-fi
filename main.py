@@ -2,6 +2,7 @@ import itertools
 from datetime import datetime
 import json
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from constants import (
     MOVEMENT_MODEL_PATH,
@@ -40,6 +41,7 @@ learning_rates = args.learning_rate
 weight_decays = args.weight_decay
 epochs_arr = args.epochs
 days_prior_arr = args.days_prior
+sequence_seps = args.sequence_sep
 use_pretrained = args.use_pretrained
 num_hidden_units_arr = args.num_hidden_units
 num_ticker_symbols = args.num_ticker_symbols[0]
@@ -63,6 +65,7 @@ if not use_pretrained:
         weight_decay,
         epochs,
         days_prior,
+        sequence_sep,
         architecture,
         num_hidden_units,
     ) in enumerate(get_hyperparameter_combos([
@@ -71,6 +74,7 @@ if not use_pretrained:
         weight_decays,
         epochs_arr,
         days_prior_arr,
+        sequence_seps,
         architectures,
         num_hidden_units_arr,
     ])):
@@ -81,6 +85,7 @@ Training Batch Size: {training_batch_size}
 Learning Rate: {learning_rate}
 Number of Epochs: {epochs}
 History Considered: {days_prior}
+Sequence Seperation: {sequence_sep}
 Number of Hidden Units: {num_hidden_units}
 Architecture: {architecture.__name__}
 -------------------------------------------------------------------------------------
@@ -103,10 +108,10 @@ Architecture: {architecture.__name__}
             target_idx = 0
 
         training_dataset = FeatureDataset(
-            dataframe=training_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior)
+            dataframe=training_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 
         val_dataset = FeatureDataset(
-            dataframe=val_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior)
+            dataframe=val_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 
         # for repeatability
         torch.manual_seed(99)
@@ -157,12 +162,20 @@ Architecture: {architecture.__name__}
         # -----------------------------------------------------------------------------------------#
         # Plot results                                                                       #
         # -----------------------------------------------------------------------------------------#
-        plt.plot(unnormalized_train_df["Date"],
-                 train_data["predictions"], label="Prediction")
-        plt.plot(unnormalized_train_df["Date"],
+        # plt.plot(unnormalized_train_df.index.values,
+        #          unnormalized_train_df["Close"], label="Close")
+        # # plt.plot(unnormalized_train_df.index.values,
+        # #  training_df["Next Day Close"], label="Ground Truth")
+        # plt.xlabel("Date")
+        # plt.ylabel("Close")
+        # plt.show()
+        plt.plot(unnormalized_train_df.index.values,
                  training_df["Next Day Close"], label="Ground Truth")
+        plt.plot(unnormalized_train_df.index.values,
+                 train_data["predictions"], label="Prediction")
         plt.xlabel("Date")
         plt.ylabel("Predicted Values")
+        plt.legend()
         plt.show()
         # plt.plot(unnormalized_val_df["Date"],
         #          val_data["predictions"], label="Prediction")
@@ -245,7 +258,7 @@ if predict_movement:
     target_idx = 0
 
 test_dataset = FeatureDataset(
-    dataframe=test_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior)
+    dataframe=test_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 test_loader = DataLoader(
     test_dataset, batch_size=1, shuffle=False)
 
@@ -262,10 +275,14 @@ test_data = framework.eval(
 print(
     f"Testing done using {model.__class__.__name__}. Accuracy: {round(test_data['accuracy'] * 100, 3)}%"
 )
+
+real_eval_df = pd.DataFrame()
+real_eval_df["Close"] = unnormalized_test_df["Close"]
+real_eval_df["Normalized Close"] = test_df["Close"]
 starting_value = 100
 eval = price_check
 if predict_movement:
     eval = real_movement_eval
 regular_strat, model_based_strat = eval(
-    model, unnormalized_test_df, test_loader, starting_value)
-print(f"If you invested ${starting_value}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than just buying and holding.")
+    model, real_eval_df, test_loader, starting_value)
+print(f"If you invested ${starting_value}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than the ${regular_strat:.2f} you would earn by just buying and holding.")

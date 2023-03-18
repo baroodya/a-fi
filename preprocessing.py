@@ -1,5 +1,6 @@
 import bs4 as bs
 import pandas as pd
+import numpy as np
 import requests
 import yfinance as yf
 
@@ -12,7 +13,7 @@ def pre_process_data(num_ticker_symbols, validation_split, test_split):
     for i, symbol in enumerate(ticker_symbols):
         try:
             stock = yf.Ticker(symbol)
-            df = stock.history(period="max").reset_index()
+            df = stock.history(period="3y")
 
             # Create Labels
             df["Next Day Movement"] = df["Close"] < df[
@@ -23,7 +24,12 @@ def pre_process_data(num_ticker_symbols, validation_split, test_split):
 
             # trim NaNs
             df = df.dropna()
+            droppables = ["Volume", "Dividends", "Stock Splits"]
+            for droppable in droppables:
+                if np.mean(df[droppable] != 0.0):
+                    droppables.remove(droppable)
 
+            df = df.drop(columns=droppables)
             # convert types
             df = df.astype({"Next Day Movement": "int"})
 
@@ -37,13 +43,15 @@ def pre_process_data(num_ticker_symbols, validation_split, test_split):
     print("\nDone!")
 
     test_start = int(len(final_df) * (1-test_split))
+    test_start_date = final_df.iloc[test_start].name
+
     val_start = int(test_start - (len(final_df) * validation_split))
+    val_start_date = final_df.iloc[val_start].name
 
-    train_df = final_df.loc[:val_start].copy()
-    val_df = final_df.loc[val_start:test_start].copy()
-    test_df = final_df.loc[test_start:].copy()
+    train_df = final_df.loc[:val_start_date].copy()
+    val_df = final_df.loc[val_start_date:test_start_date].copy()
+    test_df = final_df.loc[test_start_date:].copy()
 
-    # print(test_df)
     return train_df, val_df, test_df
 
 
