@@ -173,7 +173,7 @@ Architecture: {architecture.__name__}
         # -----------------------------------------------------------------------------------------#
         # Training
         plt.plot(train_df.index.values,
-                 norm_train_df["Next Day Close"], label="Ground Truth")
+                 norm_train_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
         plt.plot(train_df.index.values,
                  train_data["predictions"], label="Prediction")
         plt.xlabel("Date")
@@ -183,7 +183,7 @@ Architecture: {architecture.__name__}
         plt.show()
 
         plt.plot(val_df.index.values,
-                 norm_val_df["Next Day Close"], label="Ground Truth")
+                 norm_val_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
         plt.plot(val_df.index.values,
                  val_data["predictions"], label="Prediction")
         plt.xlabel("Date")
@@ -213,6 +213,7 @@ Architecture: {architecture.__name__}
                 best_data["model_name"] = model.__class__.__name__
                 best_data["days_prior"] = days_prior
                 best_data["hidden_units"] = num_hidden_units
+                best_data["sequence_sep"] = sequence_sep
                 best_data["date"] = datetime.now().strftime(
                     "%d/%m/%Y, %H:%M:%S")
 
@@ -232,6 +233,7 @@ Architecture: {architecture.__name__}
                 best_data["model_name"] = model.__class__.__name__
                 best_data["days_prior"] = days_prior
                 best_data["hidden_units"] = num_hidden_units
+                best_data["sequence_sep"] = sequence_sep
                 best_data["date"] = datetime.now().strftime(
                     "%d/%m/%Y, %H:%M:%S")
 
@@ -240,7 +242,7 @@ Architecture: {architecture.__name__}
             json.dump(best_data, f)
 
 # Load the best model so far; otherwise test using last model
-if test_best:
+if test_best or use_pretrained:
     current_model_path = PRICE_MODEL_PATH
     if predict_movement:
         current_model_path = MOVEMENT_MODEL_PATH
@@ -249,6 +251,7 @@ if test_best:
     model_class = globals()[best_data["model_name"]]
     days_prior = best_data["days_prior"]
     num_hidden_units = best_data["hidden_units"]
+    sequence_sep = best_data["sequence_sep"]
 
     model = model_class(len(feature_columns), num_hidden_units)
     model.load_state_dict(torch.load(
@@ -283,5 +286,5 @@ eval = price_check
 if predict_movement:
     eval = real_movement_eval
 regular_strat, model_based_strat = eval(
-    model, real_eval_df, test_loader, starting_value)
+    model, real_eval_df, test_loader, starting_value, sequence_sep)
 print(f"If you invested ${starting_value}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than the ${regular_strat:.2f} you would earn by just buying and holding.")

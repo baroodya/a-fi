@@ -19,7 +19,7 @@ class FeatureDataset(torch.utils.data.Dataset):
         else:
             padding_length = self.sequence_length + self.sequence_sep - i
             if i < self.sequence_sep:
-                padding_length -= 1
+                padding_length -= self.sequence_sep - i
             padding = self.X[0].repeat(padding_length, 1)
             x = self.X[0:max(i - self.sequence_sep, 0), :]
             x = torch.cat((padding, x), 0)

@@ -38,19 +38,20 @@ def real_movement_eval(model, test_df, test_loader, starting_value=100):
     return hold_curr_value, curr_value
 
 
-def price_check(model, test_df, test_loader, starting_value=100):
+def price_check(model, test_df, test_loader, starting_value=100, sequence_sep=0):
     starting_shares = 0
     # print(test_df)
     curr_value = starting_value
     curr_shares = starting_shares
-    i = 1
+    i = 1 + sequence_sep
     day_data = test_df.iloc[i]
     close = day_data["Close"]
     hold_curr_shares = curr_value / close
     rise_confidences = []
     fall_confidences = []
     for feat, _ in test_loader:
-        normalized_last_close = test_df.iloc[i-1]["Normalized Close"]
+        normalized_last_close = test_df.iloc[i -
+                                             1-sequence_sep]["Normalized Close"]
         if (i == len(test_df)):
             continue
         day_data = test_df.iloc[i]
