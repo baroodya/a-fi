@@ -1,4 +1,5 @@
 import time
+import torch
 
 
 class BaseFramework():
@@ -10,6 +11,8 @@ class BaseFramework():
     def train(self, train_loader, epochs, optimizer):
         losses = []
         total_batch_count = 0
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            optimizer, gamma=0.9)
         for _ in range(epochs):
             # batch training
             running_loss = 0
@@ -43,7 +46,7 @@ class BaseFramework():
                     batch_num += 1
                     running_loss += loss.item()
                 total_batch_count += 1
-
+            scheduler.step()
         print()
         return losses
 
