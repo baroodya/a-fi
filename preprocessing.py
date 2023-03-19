@@ -14,7 +14,7 @@ class DataPreprocessor():
         for i, symbol in enumerate(ticker_symbols):
             try:
                 stock = yf.Ticker(symbol)
-                df = stock.history(period="3y")
+                df = stock.history(period="5y")
 
                 # Create Labels
                 df["Next Day Movement"] = df["Close"] < df[

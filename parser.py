@@ -88,6 +88,7 @@ def parse_args():
         nargs="*",
         help="the number of hidden units in the LSTM model",
     )
+    parser.add_argument("--test-best", action="store_true")
     parser.set_defaults(
         predict_movement=False,
         batch_size=[64],
@@ -102,5 +103,6 @@ def parse_args():
         test_split=[0.1],
         num_ticker_symbols=[500],
         num_hidden_units=[16],
+        test_best=False
     )
     return parser.parse_args()

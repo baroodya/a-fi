@@ -45,6 +45,7 @@ sequence_seps = args.sequence_sep
 use_pretrained = args.use_pretrained
 num_hidden_units_arr = args.num_hidden_units
 num_ticker_symbols = args.num_ticker_symbols[0]
+test_best = args.test_best
 
 architectures = []
 if predict_movement:
@@ -238,17 +239,20 @@ Architecture: {architecture.__name__}
             f.truncate()
             json.dump(best_data, f)
 
-current_model_path = PRICE_MODEL_PATH
-if predict_movement:
-    current_model_path = MOVEMENT_MODEL_PATH
-with open(current_model_path + VAL_STATS_FILE_NAME, 'r') as f:
-    best_data = json.load(f)
-model_class = globals()[best_data["model_name"]]
-days_prior = best_data["days_prior"]
-num_hidden_units = best_data["hidden_units"]
+# Load the best model so far; otherwise test using last model
+if test_best:
+    current_model_path = PRICE_MODEL_PATH
+    if predict_movement:
+        current_model_path = MOVEMENT_MODEL_PATH
+    with open(current_model_path + VAL_STATS_FILE_NAME, 'r') as f:
+        best_data = json.load(f)
+    model_class = globals()[best_data["model_name"]]
+    days_prior = best_data["days_prior"]
+    num_hidden_units = best_data["hidden_units"]
 
-model = model_class(len(feature_columns), num_hidden_units)
-model.load_state_dict(torch.load(current_model_path + VAL_WEIGHTS_FILE_NAME))
+    model = model_class(len(feature_columns), num_hidden_units)
+    model.load_state_dict(torch.load(
+        current_model_path + VAL_WEIGHTS_FILE_NAME))
 
 target_idx = 1
 if predict_movement:
