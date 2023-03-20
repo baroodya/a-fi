@@ -1,4 +1,14 @@
-import time
+from constants import (
+    MOVEMENT_MODEL_PATH,
+    PRICE_MODEL_PATH,
+    TRAINING_WEIGHTS_FILE_NAME,
+    VAL_WEIGHTS_FILE_NAME,
+    TRAIN_STATS_FILE_NAME,
+    VAL_STATS_FILE_NAME,
+)
+from datetime import datetime
+import json
+import os
 import torch
 
 
@@ -77,8 +87,64 @@ class BaseFramework():
                     if abs(output - label) < threshold:
                         num_correct += 1
                 num_seen += 1
-        return {
+        self.train_data = {
             "accuracy": num_correct / num_seen,
             "loss": running_loss / len(loader),
             "predictions": outputs,
         }
+        return self.train_data
+
+    def save_model(self, ticker_symbol, days_prior, num_hidden_units, sequence_sep, predict_movement=False, is_training=True):
+        cwd = os.getcwd()
+        current_model_path =  os.path.join(cwd, PRICE_MODEL_PATH)
+        if predict_movement:
+            current_model_path = os.path.join(cwd, MOVEMENT_MODEL_PATH)
+        current_model_path = os.path.join(current_model_path, ticker_symbol)
+        if not os.path.exists(current_model_path):
+            os.mkdir(current_model_path)
+
+        stats_file_name = VAL_STATS_FILE_NAME
+        weights_file_name = VAL_WEIGHTS_FILE_NAME
+        if is_training:
+            stats_file_name = TRAIN_STATS_FILE_NAME
+            weights_file_name = TRAINING_WEIGHTS_FILE_NAME
+
+        file_path = os.path.join(current_model_path, stats_file_name)
+        if not os.path.exists(file_path):
+            with open(file_path, 'w') as f:
+                torch.save(
+                    self.model.state_dict(),
+                    os.path.join(current_model_path, weights_file_name),
+                )
+                best_data = {}
+                best_data["accuracy"] = self.train_data["accuracy"]
+                best_data["model_name"] = self.model.__class__.__name__
+                best_data["days_prior"] = days_prior
+                best_data["hidden_units"] = num_hidden_units
+                best_data["sequence_sep"] = sequence_sep
+                best_data["date"] = datetime.now().strftime(
+                    "%d/%m/%Y, %H:%M:%S")
+                
+                f.seek(0)
+                f.truncate()
+                json.dump(best_data, f)
+        else:
+            with open(file_path, 'r+') as f:
+                best_data = json.load(f)
+
+                if self.train_data['accuracy'] > best_data["accuracy"]:
+                    torch.save(
+                        self.model.state_dict(),
+                        os.path.join(current_model_path, weights_file_name),
+                    )
+                    best_data["accuracy"] = self.train_data["accuracy"]
+                    best_data["model_name"] = self.model.__class__.__name__
+                    best_data["days_prior"] = days_prior
+                    best_data["hidden_units"] = num_hidden_units
+                    best_data["sequence_sep"] = sequence_sep
+                    best_data["date"] = datetime.now().strftime(
+                        "%d/%m/%Y, %H:%M:%S")
+
+                f.seek(0)
+                f.truncate()
+                json.dump(best_data, f)

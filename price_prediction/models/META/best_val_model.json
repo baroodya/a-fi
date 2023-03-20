@@ -1,0 +1,1 @@
+{"accuracy": 0.4901185770750988, "model_name": "ShallowRegressionLSTM", "days_prior": 5, "hidden_units": 32, "sequence_sep": 0, "date": "19/03/2023, 21:28:43"}

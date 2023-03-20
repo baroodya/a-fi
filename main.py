@@ -15,8 +15,9 @@ from constants import (
 from real_eval import real_movement_eval, price_check
 from dataset import FeatureDataset
 from framework import BaseFramework
+import os
 import parser
-from preprocessing import DataPreprocessor
+from preprocessing import DataPreprocessor, get_ticker_symbols
 
 from movement_prediction.architectures import (
     MovementShallowRegressionLSTM
@@ -24,6 +25,7 @@ from movement_prediction.architectures import (
 from price_prediction.architectures import (
     ShallowRegressionLSTM
 )
+from test import eval_on_test_data
 
 import torch
 from torch.utils.data import DataLoader
@@ -58,25 +60,34 @@ def get_hyperparameter_combos(*hyperparameters):
     return list(itertools.product(*hyperparameters[0]))
 
 
+ticker_symbols = get_ticker_symbols(1)
+train_dfs = {}
+norm_train_dfs = {}
+val_dfs = {}
+norm_val_dfs = {}
+test_dfs = {}
+norm_test_dfs = {}
+
 # -----------------------------------------------------------------------------------------#
 # Preprocess the Data                                                                      #
 # -----------------------------------------------------------------------------------------#
-preprocessor = DataPreprocessor()
-preprocessor.pre_process_data(
-    num_ticker_symbols=num_ticker_symbols,
-    validation_split=validation_split,
-    test_split=test_split,
-)
-train_df, val_df, test_df = preprocessor.get_dfs()
-preprocessor.normalize_pre_processed_data()
-norm_train_df, norm_val_df, norm_test_df = preprocessor.get_norm_dfs()
-feature_columns = preprocessor.get_feature_columns()
-target_columns = preprocessor.get_target_columns()
+for ticker_symbol in ticker_symbols:
+    preprocessor = DataPreprocessor(
+        ticker_symbol=ticker_symbol,
+        validation_split=validation_split,
+        test_split=test_split
+    )
+    preprocessor.pre_process_data()
+    train_dfs[ticker_symbol], val_dfs[ticker_symbol], test_dfs[ticker_symbol] = preprocessor.get_dfs()
+    preprocessor.normalize_pre_processed_data()
+    norm_train_dfs[ticker_symbol], norm_val_dfs[ticker_symbol], norm_test_dfs[ticker_symbol] = preprocessor.get_norm_dfs()
+    feature_columns = preprocessor.get_feature_columns()
+    target_columns = preprocessor.get_target_columns()
 
-num_features = len(feature_columns)
-target_idx = 1
-if predict_movement:
-    target_idx = 0
+    num_features = len(feature_columns)
+    target_idx = 1
+    if predict_movement:
+        target_idx = 0
 
 # plt.ion()
 if not use_pretrained:
@@ -112,179 +123,122 @@ Architecture: {architecture.__name__}
 -------------------------------------------------------------------------------------
 
         """)
-        # -----------------------------------------------------------------------------------------#
-        # Create the datasets and dataloaders                                             #
-        # -----------------------------------------------------------------------------------------#
-        training_dataset = FeatureDataset(
-            dataframe=norm_train_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
+        train_acc_sum = 0.0
+        val_acc_sum = 0.0
+        hold_value_sum = 0.0
+        model_value_sum = 0.0
+        for ticker_symbol in ticker_symbols:
+            train_df = train_dfs[ticker_symbol]
+            norm_train_df = norm_train_dfs[ticker_symbol]
+            val_df = val_dfs[ticker_symbol]
+            norm_val_df = norm_val_dfs[ticker_symbol]
+            test_df = test_dfs[ticker_symbol]
+            norm_test_df = norm_val_dfs[ticker_symbol]
 
-        val_dataset = FeatureDataset(
-            dataframe=norm_val_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
+            # -----------------------------------------------------------------------------------------#
+            # Create the datasets and dataloaders                                             #
+            # -----------------------------------------------------------------------------------------#
+            training_dataset = FeatureDataset(
+                dataframe=norm_train_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 
-        # for repeatability
-        torch.manual_seed(99)
+            val_dataset = FeatureDataset(
+                dataframe=norm_val_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
 
-        training_loader = DataLoader(
-            training_dataset, batch_size=training_batch_size, shuffle=shuffle_dataset)
-        val_loader = DataLoader(
-            val_dataset, batch_size=1, shuffle=shuffle_dataset)
+            # for repeatability
+            torch.manual_seed(99)
 
-        # -----------------------------------------------------------------------------------------#
-        # Model, Optimizer, Loss                                                                   #
-        # -----------------------------------------------------------------------------------------#
-        model = architectures[0](
-            num_features=num_features, hidden_units=num_hidden_units)
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Using {device} device")
-        model.to(device)
+            training_loader = DataLoader(
+                training_dataset, batch_size=training_batch_size, shuffle=shuffle_dataset)
+            val_loader = DataLoader(
+                val_dataset, batch_size=1, shuffle=shuffle_dataset)
 
-        loss_fn = torch.nn.MSELoss()
-        if predict_movement:
-            loss_fn = torch.nn.BCELoss()
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+            # -----------------------------------------------------------------------------------------#
+            # Model, Optimizer, Loss                                                                   #
+            # -----------------------------------------------------------------------------------------#
+            model = architectures[0](
+                num_features=num_features, hidden_units=num_hidden_units)
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            print(f"Using {device} device")
+            model.to(device)
 
-        # -----------------------------------------------------------------------------------------#
-        # Train the model                                                                          #
-        # -----------------------------------------------------------------------------------------#
-        framework = BaseFramework(
-            model=model, loss_function=loss_fn)
+            loss_fn = torch.nn.MSELoss()
+            if predict_movement:
+                loss_fn = torch.nn.BCELoss()
+            optimizer = torch.optim.Adam(
+                model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
-        losses = framework.train(
-            train_loader=training_loader, epochs=epochs, optimizer=optimizer)
+            # -----------------------------------------------------------------------------------------#
+            # Train the model                                                                          #
+            # -----------------------------------------------------------------------------------------#
+            framework = BaseFramework(
+                model=model, loss_function=loss_fn)
 
-        # -----------------------------------------------------------------------------------------#
-        # Evaluate the model                                                                       #
-        # -----------------------------------------------------------------------------------------#
-        train_data = framework.eval(
-            training_loader, predict_movement=predict_movement)
-        print(
-            f"Training done. Accuracy: {train_data['accuracy'] * 100:.2f}%"
-        )
+            losses = framework.train(
+                train_loader=training_loader, epochs=epochs, optimizer=optimizer)
 
-        val_data = framework.eval(
-            val_loader, predict_movement=predict_movement)
-        print(
-            f"Validation done. Accuracy: {val_data['accuracy'] * 100:.2f}%"
-        )
+            # -----------------------------------------------------------------------------------------#
+            # Evaluate the model                                                                       #
+            # -----------------------------------------------------------------------------------------#
+            train_data = framework.eval(
+                training_loader, predict_movement=predict_movement)
+            train_acc_sum += train_data['accuracy']
+            # print(
+            #     f"Training for {ticker_symbol} done. Accuracy: {train_data['accuracy'] * 100:.2f}%"
+            # )
 
-        # -----------------------------------------------------------------------------------------#
-        # Plot results                                                                       #
-        # -----------------------------------------------------------------------------------------#
-        # Training
-        plt.plot(train_df.index.values,
-                 norm_train_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
-        plt.plot(train_df.index.values,
-                 train_data["predictions"], label="Prediction")
-        plt.xlabel("Date")
-        plt.ylabel("Predicted Values")
-        plt.title("Training Data Predictions")
-        plt.legend()
-        plt.show()
+            val_data = framework.eval(
+                val_loader, predict_movement=predict_movement)
+            val_acc_sum += val_data["accuracy"]
+            # print(
+            #     f"Validation for {ticker_symbol} done. Accuracy: {val_data['accuracy'] * 100:.2f}%"
+            # )
 
-        plt.plot(val_df.index.values,
-                 norm_val_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
-        plt.plot(val_df.index.values,
-                 val_data["predictions"], label="Prediction")
-        plt.xlabel("Date")
-        plt.ylabel("Predicted Values")
-        plt.title("Validation Data Predictions")
-        plt.legend()
-        plt.show()
+            real_eval_df = pd.DataFrame()
+            real_eval_df["Close"] = val_df["Close"]
+            real_eval_df["Normalized Close"] = norm_val_df["Close"]
+            starting_value = 100
+            eval = price_check
+            if predict_movement:
+                eval = real_movement_eval
+            regular_strat, model_based_strat = eval(
+                model, real_eval_df, val_loader, starting_value, sequence_sep)
+            hold_value_sum += regular_strat
+            model_value_sum += model_based_strat
+            # print(f"If you invested ${starting_value} in {ticker_symbol}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than the ${regular_strat:.2f} you would earn by just buying and holding.")
 
-        # -----------------------------------------------------------------------------------------#
-        # Update best stats and weights                                                            #
-        # -----------------------------------------------------------------------------------------#
+            # -----------------------------------------------------------------------------------------#
+            # Plot results                                                                       #
+            # -----------------------------------------------------------------------------------------#
+            # Training
+            plt.plot(train_df.index.values,
+                     norm_train_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
+            plt.plot(train_df.index.values,
+                     train_data["predictions"], label="Prediction")
+            plt.xlabel("Date")
+            plt.ylabel("Predicted Values")
+            plt.title("Training Data Predictions")
+            plt.legend()
+            plt.show()
 
-        current_model_path = PRICE_MODEL_PATH
-        if predict_movement:
-            current_model_path = MOVEMENT_MODEL_PATH
+            plt.plot(val_df.index.values,
+                     norm_val_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
+            plt.plot(val_df.index.values,
+                     val_data["predictions"], label="Prediction")
+            plt.xlabel("Date")
+            plt.ylabel("Predicted Values")
+            plt.title("Validation Data Predictions")
+            plt.legend()
+            plt.show()
 
-        # TODO: Make this a utility function for cleanliness
-        with open(current_model_path + TRAIN_STATS_FILE_NAME, 'r+') as f:
-            best_data = json.load(f)
+            # -----------------------------------------------------------------------------------------#
+            # Update best stats and weights                                                            #
+            # -----------------------------------------------------------------------------------------#
 
-            if train_data['accuracy'] > best_data["accuracy"]:
-                torch.save(
-                    model.state_dict(),
-                    current_model_path + TRAINING_WEIGHTS_FILE_NAME,
-                )
-                best_data["accuracy"] = train_data["accuracy"]
-                best_data["model_name"] = model.__class__.__name__
-                best_data["days_prior"] = days_prior
-                best_data["hidden_units"] = num_hidden_units
-                best_data["sequence_sep"] = sequence_sep
-                best_data["date"] = datetime.now().strftime(
-                    "%d/%m/%Y, %H:%M:%S")
+            framework.save_model(ticker_symbol, days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=True)
+            framework.save_model(ticker_symbol, days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=False)
 
-            f.seek(0)
-            f.truncate()
-            json.dump(best_data, f)
+        print(f"Training done.\nAverage training accuracy: {train_acc_sum / len(ticker_symbols) * 100:.2f}%.\nAverage Validation Accuracy: {val_acc_sum / len(ticker_symbols) * 100:.2f}%.\nAverage Hold Value: {hold_value_sum / len(ticker_symbols):.2f}.\nAverage Model Value: {model_value_sum / len(ticker_symbols):.2f}.\nAverage Improvement: {((model_value_sum - hold_value_sum) / len(ticker_symbols)) / (hold_value_sum / len(ticker_symbols)) * 100:.2f}%.")
 
-        with open(current_model_path + VAL_STATS_FILE_NAME, 'r+') as f:
-            best_data = json.load(f)
-
-            if val_data['accuracy'] > best_data["accuracy"]:
-                torch.save(
-                    model.state_dict(),
-                    current_model_path + VAL_WEIGHTS_FILE_NAME,
-                )
-                best_data["accuracy"] = val_data["accuracy"]
-                best_data["model_name"] = model.__class__.__name__
-                best_data["days_prior"] = days_prior
-                best_data["hidden_units"] = num_hidden_units
-                best_data["sequence_sep"] = sequence_sep
-                best_data["date"] = datetime.now().strftime(
-                    "%d/%m/%Y, %H:%M:%S")
-
-            f.seek(0)
-            f.truncate()
-            json.dump(best_data, f)
-
-# Load the best model so far; otherwise test using last model
-if test_best or use_pretrained:
-    current_model_path = PRICE_MODEL_PATH
-    if predict_movement:
-        current_model_path = MOVEMENT_MODEL_PATH
-    with open(current_model_path + VAL_STATS_FILE_NAME, 'r') as f:
-        best_data = json.load(f)
-    model_class = globals()[best_data["model_name"]]
-    days_prior = best_data["days_prior"]
-    num_hidden_units = best_data["hidden_units"]
-    sequence_sep = best_data["sequence_sep"]
-
-    model = model_class(len(feature_columns), num_hidden_units)
-    model.load_state_dict(torch.load(
-        current_model_path + VAL_WEIGHTS_FILE_NAME))
-
-target_idx = 1
-if predict_movement:
-    target_idx = 0
-
-test_dataset = FeatureDataset(
-    dataframe=norm_test_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
-test_loader = DataLoader(
-    test_dataset, batch_size=1, shuffle=False)
-
-loss_fn = torch.nn.MSELoss()
-if predict_movement:
-    loss_fn = torch.nn.BCELoss()
-framework = BaseFramework(
-    model=model, loss_function=loss_fn)
-
-test_data = framework.eval(
-    test_loader, predict_movement=predict_movement)
-print(
-    f"Testing done using {model.__class__.__name__}. Accuracy: {test_data['accuracy'] * 100:.2f}%"
-)
-
-real_eval_df = pd.DataFrame()
-real_eval_df["Close"] = test_df["Close"]
-real_eval_df["Normalized Close"] = norm_test_df["Close"]
-starting_value = 100
-eval = price_check
-if predict_movement:
-    eval = real_movement_eval
-regular_strat, model_based_strat = eval(
-    model, real_eval_df, test_loader, starting_value, sequence_sep)
-print(f"If you invested ${starting_value}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than the ${regular_strat:.2f} you would earn by just buying and holding.")
+if test_best:
+    eval_on_test_data(feature_columns, target_columns,
+                      norm_test_df, predict_movement)

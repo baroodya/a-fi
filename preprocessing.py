@@ -4,49 +4,47 @@ import numpy as np
 import requests
 import yfinance as yf
 
-from constants import SINGLE_TICKER_SYMBOL
+from constants import (SINGLE_TICKER_SYMBOL, STD_TICKER_SYMBOLS, FAANG_TICKER_SYMBOLS)
 
 
 class DataPreprocessor():
-    def pre_process_data(self, num_ticker_symbols, validation_split, test_split):
-        ticker_symbols = self.get_ticker_symbols(num_ticker_symbols)
+    def __init__(self, ticker_symbol, validation_split, test_split) -> None:
+        self.ticker_symbol = ticker_symbol
+        self.validation_split = validation_split
+        self.test_split = test_split
+
+    def pre_process_data(self):
         final_df = pd.DataFrame()
-        for i, symbol in enumerate(ticker_symbols):
-            try:
-                stock = yf.Ticker(symbol)
-                df = stock.history(period="5y")
+        try:
+            stock = yf.Ticker(self.ticker_symbol)
+            df = stock.history(period="5y")
 
-                # Create Labels
-                df["Next Day Movement"] = df["Close"] < df[
-                    "Close"
-                ].shift(-1)
+            # Create Labels
+            df["Next Day Movement"] = df["Close"] < df[
+                "Close"
+            ].shift(-1)
 
-                df["Next Day Close"] = df["Close"].shift(-1)
+            df["Next Day Close"] = df["Close"].shift(-1)
 
-                # trim NaNs
-                df = df.dropna()
-                droppables = ["Volume", "Dividends", "Stock Splits"]
-                for droppable in droppables:
-                    if np.mean(df[droppable] != 0.0):
-                        droppables.remove(droppable)
+            # trim NaNs
+            df = df.dropna()
+            droppables = ["Volume", "Dividends", "Stock Splits"]
+            for droppable in droppables:
+                if np.mean(df[droppable] != 0.0):
+                    droppables.remove(droppable)
 
-                df = df.drop(columns=droppables)
-                # convert types
-                df = df.astype({"Next Day Movement": "int"})
+            df = df.drop(columns=droppables)
+            # convert types
+            df = df.astype({"Next Day Movement": "int"})
 
-                final_df = pd.concat([final_df, df])
-            except KeyError:
-                print(f"Couldn't find {symbol}. Continuing...")
-            print(
-                f"Collecting the most recent financial data. Progress: {round((i+1)/len(ticker_symbols) *100, 2)}%.",
-                end="\r",
-            )
-        print("\nDone!")
+            final_df = pd.concat([final_df, df])
+        except KeyError:
+            print(f"Couldn't find {self.ticker_symbol}. Continuing...")
 
-        test_start = int(len(final_df) * (1-test_split))
+        test_start = int(len(final_df) * (1-self.test_split))
         test_start_date = final_df.iloc[test_start].name
 
-        val_start = int(test_start - (len(final_df) * validation_split))
+        val_start = int(test_start - (len(final_df) * self.validation_split))
         val_start_date = final_df.iloc[val_start].name
 
         self.train_df = final_df.loc[:val_start_date].copy()
@@ -93,19 +91,20 @@ class DataPreprocessor():
             self.norm_test_df[c] = (
                 self.test_df[c] - train_mean) / train_stddev
 
-    def get_ticker_symbols(self, num_ticker_symbols):
-        # Get s&p 500 ticker symbols from wikipedia
-        resp = requests.get(
-            "http://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-        )
-        soup = bs.BeautifulSoup(resp.text, "lxml")
-        table = soup.find("table", {"class": "wikitable sortable"})
 
-        ticker_symbols = []
+def get_ticker_symbols(num_ticker_symbols):
+    # # Get s&p 500 ticker symbols from wikipedia
+    # resp = requests.get(
+    #     "http://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    # )
+    # soup = bs.BeautifulSoup(resp.text, "lxml")
+    # table = soup.find("table", {"class": "wikitable sortable"})
 
-        for row in table.findAll("tr")[1:num_ticker_symbols + 1]:
-            ticker = row.findAll("td")[0].text.strip()
-            ticker_symbols.append(ticker)
+    # ticker_symbols = []
 
-        ticker_symbols = SINGLE_TICKER_SYMBOL
-        return ticker_symbols
+    # for row in table.findAll("tr")[1:num_ticker_symbols + 1]:
+    #     ticker = row.findAll("td")[0].text.strip()
+    #     ticker_symbols.append(ticker)
+
+    ticker_symbols = FAANG_TICKER_SYMBOLS
+    return ticker_symbols
