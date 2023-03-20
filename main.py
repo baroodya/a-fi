@@ -23,7 +23,10 @@ from movement_prediction.architectures import (
     MovementShallowRegressionLSTM
 )
 from price_prediction.architectures import (
-    ShallowRegressionLSTM
+    ShallowRegressionLSTM,
+    DoubleRegressionLSTM,
+    QuadRegressionLSTM,
+    DeepRegressionLSTM,
 )
 from test import eval_on_test_data
 
@@ -54,6 +57,9 @@ if predict_movement:
     architectures.append(MovementShallowRegressionLSTM)
 else:
     architectures.append(ShallowRegressionLSTM)
+    architectures.append(DoubleRegressionLSTM)
+    architectures.append(QuadRegressionLSTM)
+    architectures.append(DeepRegressionLSTM)
 
 
 def get_hyperparameter_combos(*hyperparameters):
@@ -160,7 +166,7 @@ Architecture: {architecture.__name__}
             # -----------------------------------------------------------------------------------------#
             # Model, Optimizer, Loss                                                                   #
             # -----------------------------------------------------------------------------------------#
-            model = architectures[0](
+            model = architecture(
                 num_features=num_features, hidden_units=num_hidden_units)
             model.to(device)
 
@@ -218,7 +224,8 @@ Architecture: {architecture.__name__}
                      train_data["predictions"], label="Prediction")
             plt.xlabel("Date")
             plt.ylabel("Predicted Values")
-            plt.title(f"Training Data Predictions for {ticker_symbol}")
+            plt.suptitle(f"Training Data Predictions for {ticker_symbol}")
+            plt.title(f"Version {i+1}. Architecture: {architecture.__name__}")
             plt.legend()
             plt.show()
             plt.pause(0.1)
@@ -255,7 +262,7 @@ Average training accuracy: {train_acc:.2f}%.
 Average Validation Accuracy: {val_acc:.2f}%.
 If you started with ${starting_value}:
     Buying equal weights on {start_date} and holding would result in ${hold_value:.2f} on {end_date}.
-    Buying and Selling equal weights based on the model starting on {val_df.index[0]} would result in ${model_value:.2f} on {val_df.index[-1]}.
+    Buying and Selling equal weights based on the model starting on {start_date} would result in ${model_value:.2f} on {end_date}.
     This is is an average improvement of {improvement * 100:.2f}%.""")
 
 if test_best:
