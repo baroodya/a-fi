@@ -5,6 +5,8 @@ from constants import (
     VAL_WEIGHTS_FILE_NAME,
     TRAIN_STATS_FILE_NAME,
     VAL_STATS_FILE_NAME,
+    TRAINING_WEIGHTS_FILE_NAME_ONNX,
+    VAL_WEIGHTS_FILE_NAME_ONNX
 )
 from datetime import datetime
 import json
@@ -21,6 +23,7 @@ class BaseFramework():
         self.ticker_symbol = ticker_symbol
 
     def train(self, train_loader, epochs, optimizer):
+        self.model.train()
         losses = []
         avg_losses = []
         recent_losses = np.zeros(100)
@@ -113,6 +116,7 @@ class BaseFramework():
         return self.train_data
 
     def save_model(self, days_prior, num_hidden_units, sequence_sep, predict_movement=False, is_training=True):
+        self.model.eval()
         cwd = os.getcwd()
         current_model_path =  os.path.join(cwd, PRICE_MODEL_PATH)
         if predict_movement:
@@ -123,9 +127,11 @@ class BaseFramework():
 
         stats_file_name = VAL_STATS_FILE_NAME
         weights_file_name = VAL_WEIGHTS_FILE_NAME
+        weights_file_name_onnx = VAL_WEIGHTS_FILE_NAME_ONNX
         if is_training:
             stats_file_name = TRAIN_STATS_FILE_NAME
             weights_file_name = TRAINING_WEIGHTS_FILE_NAME
+            weights_file_name_onnx = TRAINING_WEIGHTS_FILE_NAME_ONNX
 
         file_path = os.path.join(current_model_path, stats_file_name)
         if not os.path.exists(file_path):
@@ -134,6 +140,11 @@ class BaseFramework():
                     self.model.state_dict(),
                     os.path.join(current_model_path, weights_file_name),
                 )
+                    
+                dummy_inputs = [torch.randn(1,self.model.num_sensors) for _ in range(days_prior)]
+                dummy_inputs = torch.cat(dummy_inputs).view(1, len(dummy_inputs), -1)
+                torch.onnx.export(self.model, dummy_inputs, os.path.join(current_model_path, weights_file_name_onnx))
+
                 best_data = {}
                 best_data["accuracy"] = self.train_data["accuracy"]
                 best_data["model_name"] = self.model.__class__.__name__
@@ -155,6 +166,11 @@ class BaseFramework():
                         self.model.state_dict(),
                         os.path.join(current_model_path, weights_file_name),
                     )
+
+                    dummy_inputs = [torch.randn(1,self.model.num_sensors) for _ in range(days_prior)]
+                    dummy_inputs = torch.cat(dummy_inputs).view(1, len(dummy_inputs), -1)
+                    torch.onnx.export(self.model, dummy_inputs, os.path.join(current_model_path, weights_file_name_onnx))
+                    
                     best_data["accuracy"] = self.train_data["accuracy"]
                     best_data["model_name"] = self.model.__class__.__name__
                     best_data["days_prior"] = days_prior

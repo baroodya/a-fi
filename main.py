@@ -57,9 +57,9 @@ if predict_movement:
     architectures.append(MovementShallowRegressionLSTM)
 else:
     architectures.append(ShallowRegressionLSTM)
-    architectures.append(DoubleRegressionLSTM)
-    architectures.append(QuadRegressionLSTM)
-    architectures.append(DeepRegressionLSTM)
+    # architectures.append(DoubleRegressionLSTM)
+    # architectures.append(QuadRegressionLSTM)
+    # architectures.append(DeepRegressionLSTM)
 
 
 def get_hyperparameter_combos(*hyperparameters):

@@ -7,9 +7,11 @@ PRICE_MODEL_PATH = (
 )
 
 TRAINING_WEIGHTS_FILE_NAME = "best_training_model_weights.pth"
+TRAINING_WEIGHTS_FILE_NAME_ONNX = "best_train_model_weights.onnx"
 TRAIN_STATS_FILE_NAME = "best_training_model.json"
 
 VAL_WEIGHTS_FILE_NAME = "best_val_model_weights.pth"
+VAL_WEIGHTS_FILE_NAME_ONNX = "best_val_model_weights.onnx"
 VAL_STATS_FILE_NAME = "best_val_model.json"
 
 STD_TICKER_SYMBOLS = [
