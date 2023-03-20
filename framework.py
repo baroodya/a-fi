@@ -13,10 +13,10 @@ import torch
 
 
 class BaseFramework():
-    def __init__(self, model, loss_function):
+    def __init__(self, model, loss_function, ticker_symbol):
         self.model = model
-
         self.loss_func = loss_function
+        self.ticker_symbol = ticker_symbol
 
     def train(self, train_loader, epochs, optimizer):
         losses = []
@@ -47,7 +47,7 @@ class BaseFramework():
                     progress = (total_batch_count) / \
                         (len(train_loader) * epochs) * 100
                     print(
-                        f"Training on {epochs * len(train_loader)} batches. Progress: {progress:.2f}%. Avg. Loss: {running_loss / batch_num :.5f}.",
+                        f"Training on {self.ticker_symbol}. Progress: {progress:.2f}%. Avg. Loss: {running_loss / batch_num :.5f}.",
                         end="\r",
                     )
                     batch_num = 1
@@ -94,12 +94,12 @@ class BaseFramework():
         }
         return self.train_data
 
-    def save_model(self, ticker_symbol, days_prior, num_hidden_units, sequence_sep, predict_movement=False, is_training=True):
+    def save_model(self, days_prior, num_hidden_units, sequence_sep, predict_movement=False, is_training=True):
         cwd = os.getcwd()
         current_model_path =  os.path.join(cwd, PRICE_MODEL_PATH)
         if predict_movement:
             current_model_path = os.path.join(cwd, MOVEMENT_MODEL_PATH)
-        current_model_path = os.path.join(current_model_path, ticker_symbol)
+        current_model_path = os.path.join(current_model_path, self.ticker_symbol)
         if not os.path.exists(current_model_path):
             os.mkdir(current_model_path)
 

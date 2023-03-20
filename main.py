@@ -59,6 +59,11 @@ else:
 def get_hyperparameter_combos(*hyperparameters):
     return list(itertools.product(*hyperparameters[0]))
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using {device} device")
+
+starting_value = 100
+
 
 ticker_symbols = get_ticker_symbols(1)
 train_dfs = {}
@@ -89,7 +94,7 @@ for ticker_symbol in ticker_symbols:
     if predict_movement:
         target_idx = 0
 
-# plt.ion()
+plt.ion()
 if not use_pretrained:
     for i, (
         training_batch_size,
@@ -157,8 +162,6 @@ Architecture: {architecture.__name__}
             # -----------------------------------------------------------------------------------------#
             model = architectures[0](
                 num_features=num_features, hidden_units=num_hidden_units)
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            print(f"Using {device} device")
             model.to(device)
 
             loss_fn = torch.nn.MSELoss()
@@ -171,7 +174,7 @@ Architecture: {architecture.__name__}
             # Train the model                                                                          #
             # -----------------------------------------------------------------------------------------#
             framework = BaseFramework(
-                model=model, loss_function=loss_fn)
+                model=model, loss_function=loss_fn, ticker_symbol=ticker_symbol)
 
             losses = framework.train(
                 train_loader=training_loader, epochs=epochs, optimizer=optimizer)
@@ -196,7 +199,6 @@ Architecture: {architecture.__name__}
             real_eval_df = pd.DataFrame()
             real_eval_df["Close"] = val_df["Close"]
             real_eval_df["Normalized Close"] = norm_val_df["Close"]
-            starting_value = 100
             eval = price_check
             if predict_movement:
                 eval = real_movement_eval
@@ -209,35 +211,52 @@ Architecture: {architecture.__name__}
             # -----------------------------------------------------------------------------------------#
             # Plot results                                                                       #
             # -----------------------------------------------------------------------------------------#
-            # Training
+            plt.figure()
             plt.plot(train_df.index.values,
                      norm_train_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
             plt.plot(train_df.index.values,
                      train_data["predictions"], label="Prediction")
             plt.xlabel("Date")
             plt.ylabel("Predicted Values")
-            plt.title("Training Data Predictions")
+            plt.title(f"Training Data Predictions for {ticker_symbol}")
             plt.legend()
             plt.show()
+            plt.pause(0.1)
 
+            plt.figure()
             plt.plot(val_df.index.values,
                      norm_val_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
             plt.plot(val_df.index.values,
                      val_data["predictions"], label="Prediction")
             plt.xlabel("Date")
             plt.ylabel("Predicted Values")
-            plt.title("Validation Data Predictions")
+            plt.title(f"Validation Data Predictions for {ticker_symbol}")
             plt.legend()
             plt.show()
+            plt.pause(0.1)
 
             # -----------------------------------------------------------------------------------------#
             # Update best stats and weights                                                            #
             # -----------------------------------------------------------------------------------------#
 
-            framework.save_model(ticker_symbol, days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=True)
-            framework.save_model(ticker_symbol, days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=False)
+            framework.save_model(days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=True)
+            framework.save_model(days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=False)
 
-        print(f"Training done.\nAverage training accuracy: {train_acc_sum / len(ticker_symbols) * 100:.2f}%.\nAverage Validation Accuracy: {val_acc_sum / len(ticker_symbols) * 100:.2f}%.\nAverage Hold Value: {hold_value_sum / len(ticker_symbols):.2f}.\nAverage Model Value: {model_value_sum / len(ticker_symbols):.2f}.\nAverage Improvement: {((model_value_sum - hold_value_sum) / len(ticker_symbols)) / (hold_value_sum / len(ticker_symbols)) * 100:.2f}%.")
+        train_acc = train_acc_sum / len(ticker_symbols) * 100
+        val_acc = val_acc_sum / len(ticker_symbols) * 100
+        start_date = val_df.index[0].strftime("%B %-d, %Y")
+        end_date = val_df.index[-1].strftime("%B %-d, %Y")
+        hold_value = hold_value_sum / len(ticker_symbols)
+        model_value = model_value_sum / len(ticker_symbols)
+        improvement = (model_value - hold_value) / hold_value
+        print(f"""
+Training done.
+Average training accuracy: {train_acc:.2f}%.
+Average Validation Accuracy: {val_acc:.2f}%.
+If you started with ${starting_value}:
+    Buying equal weights on {start_date} and holding would result in ${hold_value:.2f} on {end_date}.
+    Buying and Selling equal weights based on the model starting on {val_df.index[0]} would result in ${model_value:.2f} on {val_df.index[-1]}.
+    This is is an average improvement of {improvement * 100:.2f}%.""")
 
 if test_best:
     eval_on_test_data(feature_columns, target_columns,
