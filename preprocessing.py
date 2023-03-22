@@ -19,11 +19,7 @@ class DataPreprocessor():
             stock = yf.Ticker(self.ticker_symbol)
             df = stock.history(period="5y")
 
-            # Create Labels
-            df["Next Day Movement"] = df["Close"] < df[
-                "Close"
-            ].shift(-1)
-
+            # Create Target
             df["Next Day Close"] = df["Close"].shift(-1)
 
             # trim NaNs
@@ -34,8 +30,6 @@ class DataPreprocessor():
                     droppables.remove(droppable)
 
             df = df.drop(columns=droppables)
-            # convert types
-            df = df.astype({"Next Day Movement": "int"})
 
             final_df = pd.concat([final_df, df])
         except KeyError:
@@ -68,14 +62,14 @@ class DataPreprocessor():
     def get_feature_columns(self):
         return self.feature_columns
 
-    def get_target_columns(self):
-        return self.target_columns
+    def get_target_column(self):
+        return self.target_column
 
     def normalize_pre_processed_data(self):
         # normalize feature columns
-        self.target_columns = ["Next Day Movement", "Next Day Close"]
+        self.target_column = "Next Day Close"
         self.feature_columns = self.train_df.columns.difference(
-            self.target_columns)
+            [self.target_column])
 
 
         self.norm_train_df = self.train_df.copy()

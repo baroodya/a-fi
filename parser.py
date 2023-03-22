@@ -5,7 +5,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Train or predict stock movement with a neural network."
     )
-    parser.add_argument("--predict-movement", action="store_true")
     parser.add_argument(
         "-dp",
         "--days-prior",
@@ -90,7 +89,6 @@ def parse_args():
     )
     parser.add_argument("--test-best", action="store_true")
     parser.set_defaults(
-        predict_movement=False,
         batch_size=[64],
         days_prior=[7],
         sequence_sep=[0],

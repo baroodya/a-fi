@@ -1,12 +1,9 @@
 from constants import (
-    MOVEMENT_MODEL_PATH,
-    PRICE_MODEL_PATH,
+    MODEL_PATH,
     TRAINING_WEIGHTS_FILE_NAME,
     VAL_WEIGHTS_FILE_NAME,
     TRAIN_STATS_FILE_NAME,
     VAL_STATS_FILE_NAME,
-    TRAINING_WEIGHTS_FILE_NAME_ONNX,
-    VAL_WEIGHTS_FILE_NAME_ONNX
 )
 from datetime import datetime
 import json
@@ -84,37 +81,22 @@ class BaseFramework():
         print()
         return losses
 
-    def eval(self, loader, predict_movement=False, threshold=0.1, is_training_data=False):
+    def eval(self, loader, threshold=1, is_training_data=False):
         num_correct = 0
         num_seen = 0
         running_loss = 0
         self.model.eval()
 
         outputs = []
-        last_label = 0
-        last_output = 0
-        for features, label in loader:
+        for features, target in loader:
             batch_output = self.model.forward(features)
-            running_loss += self.loss_func(batch_output, label)
+            running_loss += self.loss_func(batch_output, target)
 
-            for output, label in zip(batch_output, label):
-                # print(output.item(), label.item())
+            for output, target in zip(batch_output, target):
                 outputs.append(output.item())
-                if predict_movement:
-                    if (
-                        output > 0.5
-                        and label == 1
-                        or output < 0.5
-                        and label == 0
-                    ):
-                        num_correct += 1
-
-                else:
-                    if (label > last_label and output > last_output) or (label <= last_label and output <= last_output):
-                        num_correct += 1
+                if abs(output - target) < threshold:
+                    num_correct += 1
                 num_seen += 1
-                last_label = label
-                last_output = output
         store = {
             "accuracy": num_correct / num_seen,
             "loss": running_loss / len(loader),
@@ -126,12 +108,10 @@ class BaseFramework():
             self.val_data = store
         return store
 
-    def save_model(self, days_prior, num_hidden_units, sequence_sep, predict_movement=False, is_training=True):
+    def save_model(self, days_prior, num_hidden_units, sequence_sep, is_training=True):
         self.model.eval()
         cwd = os.getcwd()
-        current_model_path =  os.path.join(cwd, PRICE_MODEL_PATH)
-        if predict_movement:
-            current_model_path = os.path.join(cwd, MOVEMENT_MODEL_PATH)
+        current_model_path =  os.path.join(cwd, MODEL_PATH)
         current_model_path = os.path.join(current_model_path, self.ticker_symbol)
         if not os.path.exists(current_model_path):
             os.mkdir(current_model_path)

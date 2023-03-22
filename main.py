@@ -1,43 +1,28 @@
 import itertools
-from datetime import datetime
-import json
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from constants import (
-    MOVEMENT_MODEL_PATH,
-    PRICE_MODEL_PATH,
-    TRAINING_WEIGHTS_FILE_NAME,
-    VAL_WEIGHTS_FILE_NAME,
-    TRAIN_STATS_FILE_NAME,
-    VAL_STATS_FILE_NAME,
-)
-from real_eval import real_movement_eval, price_check
+from real_eval import real_eval
 from dataset import FeatureDataset
 from framework import BaseFramework
-import os
 import parser
 from preprocessing import DataPreprocessor, get_ticker_symbols
 
-from movement_prediction.architectures import (
-    MovementShallowRegressionLSTM
-)
-from price_prediction.architectures import (
+from architectures import (
     ShallowRegressionLSTM,
     DoubleRegressionLSTM,
     QuadRegressionLSTM,
     DeepRegressionLSTM,
 )
-from test import eval_on_test_data
 
 import torch
 from torch.utils.data import DataLoader
+
 # -----------------------------------------------------------------------------------------#
 # Collect Hyperparameters                                                                  #
 # -----------------------------------------------------------------------------------------#
 args = parser.parse_args()
 
-predict_movement = args.predict_movement
 training_batch_sizes = args.batch_size
 validation_split = args.val_split[0]
 test_split = args.test_split[0]
@@ -53,13 +38,10 @@ num_ticker_symbols = args.num_ticker_symbols[0]
 test_best = args.test_best
 
 architectures = []
-if predict_movement:
-    architectures.append(MovementShallowRegressionLSTM)
-else:
-    architectures.append(ShallowRegressionLSTM)
-    # architectures.append(DoubleRegressionLSTM)
-    # architectures.append(QuadRegressionLSTM)
-    # architectures.append(DeepRegressionLSTM)
+architectures.append(ShallowRegressionLSTM)
+# architectures.append(DoubleRegressionLSTM)
+# architectures.append(QuadRegressionLSTM)
+# architectures.append(DeepRegressionLSTM)
 
 
 def get_hyperparameter_combos(*hyperparameters):
@@ -92,13 +74,11 @@ for ticker_symbol in ticker_symbols:
     train_dfs[ticker_symbol], val_dfs[ticker_symbol], test_dfs[ticker_symbol] = preprocessor.get_dfs()
     preprocessor.normalize_pre_processed_data()
     norm_train_dfs[ticker_symbol], norm_val_dfs[ticker_symbol], norm_test_dfs[ticker_symbol] = preprocessor.get_norm_dfs()
-    feature_columns = preprocessor.get_feature_columns()
-    target_columns = preprocessor.get_target_columns()
+    if ticker_symbol == ticker_symbols[0]:
+        feature_columns = preprocessor.get_feature_columns()
+        target_column = preprocessor.get_target_column()
 
     num_features = len(feature_columns)
-    target_idx = 1
-    if predict_movement:
-        target_idx = 0
 
 plt.ion()
 if not use_pretrained:
@@ -150,10 +130,10 @@ Architecture: {architecture.__name__}
             # Create the datasets and dataloaders                                             #
             # -----------------------------------------------------------------------------------------#
             training_dataset = FeatureDataset(
-                dataframe=norm_train_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
+                dataframe=norm_train_df, features=feature_columns, target=target_column, sequence_length=days_prior, sequence_sep=sequence_sep)
 
             val_dataset = FeatureDataset(
-                dataframe=norm_val_df, features=feature_columns, target=target_columns[target_idx], sequence_length=days_prior, sequence_sep=sequence_sep)
+                dataframe=norm_val_df, features=feature_columns, target=target_column, sequence_length=days_prior, sequence_sep=sequence_sep)
 
             # for repeatability
             torch.manual_seed(99)
@@ -171,8 +151,6 @@ Architecture: {architecture.__name__}
             model.to(device)
 
             loss_fn = torch.nn.MSELoss()
-            if predict_movement:
-                loss_fn = torch.nn.BCELoss()
             optimizer = torch.optim.Adam(
                 model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
@@ -189,27 +167,23 @@ Architecture: {architecture.__name__}
             # Evaluate the model                                                                       #
             # -----------------------------------------------------------------------------------------#
             train_data = framework.eval(
-                training_loader, predict_movement=predict_movement, is_training_data=True)
+                training_loader, is_training_data=True)
             train_acc_sum += train_data['accuracy']
             # print(
             #     f"Training for {ticker_symbol} done. Accuracy: {train_data['accuracy'] * 100:.2f}%"
             # )
 
             val_data = framework.eval(
-                val_loader, predict_movement=predict_movement)
+                val_loader)
             val_acc_sum += val_data["accuracy"]
             # print(
             #     f"Validation for {ticker_symbol} done. Accuracy: {val_data['accuracy'] * 100:.2f}%"
             # )
 
-            real_eval_df = pd.DataFrame()
-            real_eval_df["Close"] = val_df["Close"]
-            real_eval_df["Normalized Close"] = norm_val_df["Close"]
-            eval = price_check
-            if predict_movement:
-                eval = real_movement_eval
-            regular_strat, model_based_strat = eval(
-                model, real_eval_df, val_loader, starting_value, sequence_sep)
+            closes = list(val_df["Close"])
+
+            regular_strat, model_based_strat = real_eval(
+                model, closes, val_loader, starting_value, sequence_sep)
             hold_value_sum += regular_strat
             model_value_sum += model_based_strat
             # print(f"If you invested ${starting_value} in {ticker_symbol}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than the ${regular_strat:.2f} you would earn by just buying and holding.")
@@ -228,7 +202,7 @@ Architecture: {architecture.__name__}
             plt.title(f"Version {i+1}. Architecture: {architecture.__name__}")
             plt.legend()
             plt.show()
-            plt.pause(0.1)
+            # plt.pause(0.1)
 
             plt.figure()
             plt.plot(val_df.index.values,
@@ -240,14 +214,14 @@ Architecture: {architecture.__name__}
             plt.title(f"Validation Data Predictions for {ticker_symbol}")
             plt.legend()
             plt.show()
-            plt.pause(0.1)
+            # plt.pause(0.1)
 
             # -----------------------------------------------------------------------------------------#
             # Update best stats and weights                                                            #
             # -----------------------------------------------------------------------------------------#
 
-            framework.save_model(days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=True)
-            framework.save_model(days_prior, num_hidden_units, sequence_sep, predict_movement, is_training=False)
+            framework.save_model(days_prior, num_hidden_units, sequence_sep, is_training=True)
+            framework.save_model(days_prior, num_hidden_units, sequence_sep, is_training=False)
 
         train_acc = train_acc_sum / len(ticker_symbols) * 100
         val_acc = val_acc_sum / len(ticker_symbols) * 100
@@ -264,7 +238,3 @@ If you started with ${starting_value}:
     Buying equal weights on {start_date} and holding would result in ${hold_value:.2f} on {end_date}.
     Buying and Selling equal weights based on the model starting on {start_date} would result in ${model_value:.2f} on {end_date}.
     This is is an average improvement of {improvement * 100:.2f}%.""")
-
-if test_best:
-    eval_on_test_data(feature_columns, target_columns,
-                      norm_test_df, predict_movement)
