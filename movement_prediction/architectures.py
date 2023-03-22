@@ -52,7 +52,7 @@ class MovementShallowRegressionLSTM(torch.nn.Module):
 
         self.linear = torch.nn.Linear(
             in_features=self.hidden_units, out_features=1)
-
+        
         self.sigmoid = torch.nn.Sigmoid()
 
     def forward(self, x):
@@ -67,6 +67,5 @@ class MovementShallowRegressionLSTM(torch.nn.Module):
         out = hn.view(-1, self.hidden_units)
         out = self.relu(out)
         out = self.linear(out).flatten()
-        out = self.sigmoid(out)
 
         return out

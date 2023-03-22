@@ -1,15 +1,19 @@
 import numpy as np
 
 
-def real_movement_eval(model, test_df, test_loader, starting_value=100):
+def real_movement_eval(model, test_df, test_loader, starting_value=100, sequence_sep=0):
     starting_shares = 0
     # print(test_df)
     curr_value = starting_value
     curr_shares = starting_shares
-    i = 0
+
+    i = sequence_sep
+
     day_data = test_df.iloc[i]
     close = day_data["Close"]
+    last_close = close
     hold_curr_shares = curr_value / close
+
     rise_confidences = []
     fall_confidences = []
     for feat, _ in test_loader:
@@ -27,14 +31,16 @@ def real_movement_eval(model, test_df, test_loader, starting_value=100):
             fall_confidences.append(confidence)
             curr_value += confidence * (curr_shares * close)
             curr_shares -= confidence * (curr_shares)
+        print(f"Yesterday's Close: {last_close:.2f} Today's Pred: {output:.2f} Today's Close: {close:.2f} Shares: {curr_shares:.2f} Cash: {curr_value:.2f} Value {curr_shares * close + curr_value:.2f} Hold Value: {hold_curr_shares * close:.2f}")
         i += 1
+        last_close = close
     curr_value += curr_shares * test_df.iloc[-1]["Close"]
     hold_curr_value = hold_curr_shares * test_df.iloc[-1]["Close"]
 
-    # print(
-    #     f"Rises. Mean: {np.mean(rise_confidences)} Std Dev: {np.std(rise_confidences)}")
-    # print(
-    #     f"Falls. Mean: {np.mean(fall_confidences)} Std Dev: {np.std(fall_confidences)}")
+    print(
+        f"{len(rise_confidences)} Rises. Mean: {np.mean(rise_confidences)} Std Dev: {np.std(rise_confidences)}")
+    print(
+        f"{len(fall_confidences)} Falls. Mean: {np.mean(fall_confidences)} Std Dev: {np.std(fall_confidences)}")
     return hold_curr_value, curr_value
 
 
