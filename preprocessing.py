@@ -50,7 +50,6 @@ class DataPreprocessor():
         self.train_df = final_df.loc[:val_start_date].copy()
         self.val_df = final_df.loc[val_start_date:test_start_date].copy()
         self.test_df = final_df.loc[test_start_date:].copy()
-
     def get_train_df(self):
         return self.train_df
 
@@ -76,7 +75,8 @@ class DataPreprocessor():
         # normalize feature columns
         self.target_columns = ["Next Day Movement", "Next Day Close"]
         self.feature_columns = self.train_df.columns.difference(
-            [self.target_columns[0]])
+            self.target_columns)
+
 
         self.norm_train_df = self.train_df.copy()
         self.norm_val_df = self.val_df.copy()
@@ -107,5 +107,5 @@ def get_ticker_symbols(num_ticker_symbols):
     #     ticker_symbols.append(ticker)
 
     ticker_symbols = FAANG_TICKER_SYMBOLS
-    # ticker_symbols = SINGLE_TICKER_SYMBOL
+    ticker_symbols = SINGLE_TICKER_SYMBOL
     return ticker_symbols

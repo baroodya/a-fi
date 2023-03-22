@@ -22,6 +22,9 @@ class BaseFramework():
         self.loss_func = loss_function
         self.ticker_symbol = ticker_symbol
 
+        self.train_data = {}
+        self.val_data = {}
+
     def train(self, train_loader, epochs, optimizer):
         self.model.train()
         losses = []
@@ -31,11 +34,11 @@ class BaseFramework():
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer, gamma=0.9)
 
-        plt.figure()
-        plt.xlabel("Number of Examples")
-        plt.ylabel("Log Loss")
-        plt.title(f"Loss for {self.ticker_symbol}")
-        plt.show()
+        # plt.figure()
+        # plt.xlabel("Number of Examples")
+        # plt.ylabel("Log Loss")
+        # plt.title(f"Loss for {self.ticker_symbol}")
+        # plt.show()
 
         recent_idx = 0
         for _ in range(epochs):
@@ -81,13 +84,15 @@ class BaseFramework():
         print()
         return losses
 
-    def eval(self, loader, predict_movement=False, threshold=0.1):
+    def eval(self, loader, predict_movement=False, threshold=0.1, is_training_data=False):
         num_correct = 0
         num_seen = 0
         running_loss = 0
         self.model.eval()
 
         outputs = []
+        last_label = 0
+        last_output = 0
         for features, label in loader:
             batch_output = self.model.forward(features)
             running_loss += self.loss_func(batch_output, label)
@@ -105,15 +110,21 @@ class BaseFramework():
                         num_correct += 1
 
                 else:
-                    if abs(output - label) < threshold:
+                    if (label > last_label and output > last_output) or (label <= last_label and output <= last_output):
                         num_correct += 1
                 num_seen += 1
-        self.train_data = {
+                last_label = label
+                last_output = output
+        store = {
             "accuracy": num_correct / num_seen,
             "loss": running_loss / len(loader),
             "predictions": outputs,
         }
-        return self.train_data
+        if is_training_data:
+            self.train_data = store
+        else:
+            self.val_data = store
+        return store
 
     def save_model(self, days_prior, num_hidden_units, sequence_sep, predict_movement=False, is_training=True):
         self.model.eval()
@@ -127,11 +138,9 @@ class BaseFramework():
 
         stats_file_name = VAL_STATS_FILE_NAME
         weights_file_name = VAL_WEIGHTS_FILE_NAME
-        weights_file_name_onnx = VAL_WEIGHTS_FILE_NAME_ONNX
         if is_training:
             stats_file_name = TRAIN_STATS_FILE_NAME
             weights_file_name = TRAINING_WEIGHTS_FILE_NAME
-            weights_file_name_onnx = TRAINING_WEIGHTS_FILE_NAME_ONNX
 
         file_path = os.path.join(current_model_path, stats_file_name)
         if not os.path.exists(file_path):
@@ -140,13 +149,12 @@ class BaseFramework():
                     self.model.state_dict(),
                     os.path.join(current_model_path, weights_file_name),
                 )
-                    
-                dummy_inputs = [torch.randn(1,self.model.num_sensors) for _ in range(days_prior)]
-                dummy_inputs = torch.cat(dummy_inputs).view(1, len(dummy_inputs), -1)
-                torch.onnx.export(self.model, dummy_inputs, os.path.join(current_model_path, weights_file_name_onnx))
 
                 best_data = {}
-                best_data["accuracy"] = self.train_data["accuracy"]
+                if is_training:
+                    best_data["accuracy"] = self.train_data["accuracy"]
+                else:
+                    best_data["accuracy"] = self.val_data["accuracy"]
                 best_data["model_name"] = self.model.__class__.__name__
                 best_data["days_prior"] = days_prior
                 best_data["hidden_units"] = num_hidden_units
@@ -161,17 +169,16 @@ class BaseFramework():
             with open(file_path, 'r+') as f:
                 best_data = json.load(f)
 
-                if self.train_data['accuracy'] > best_data["accuracy"]:
+                if is_training and (self.train_data['accuracy'] > best_data["accuracy"]) or not is_training and (self.val_data['accuracy'] > best_data["accuracy"]):
                     torch.save(
                         self.model.state_dict(),
                         os.path.join(current_model_path, weights_file_name),
                     )
-
-                    dummy_inputs = [torch.randn(1,self.model.num_sensors) for _ in range(days_prior)]
-                    dummy_inputs = torch.cat(dummy_inputs).view(1, len(dummy_inputs), -1)
-                    torch.onnx.export(self.model, dummy_inputs, os.path.join(current_model_path, weights_file_name_onnx))
                     
-                    best_data["accuracy"] = self.train_data["accuracy"]
+                    if is_training:
+                        best_data["accuracy"] = self.train_data["accuracy"]
+                    else:
+                        best_data["accuracy"] = self.val_data["accuracy"]
                     best_data["model_name"] = self.model.__class__.__name__
                     best_data["days_prior"] = days_prior
                     best_data["hidden_units"] = num_hidden_units

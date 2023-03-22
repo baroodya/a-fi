@@ -161,7 +161,7 @@ Architecture: {architecture.__name__}
             training_loader = DataLoader(
                 training_dataset, batch_size=training_batch_size, shuffle=shuffle_dataset)
             val_loader = DataLoader(
-                val_dataset, batch_size=1, shuffle=shuffle_dataset)
+                val_dataset, batch_size=1, shuffle=False)
 
             # -----------------------------------------------------------------------------------------#
             # Model, Optimizer, Loss                                                                   #
@@ -189,7 +189,7 @@ Architecture: {architecture.__name__}
             # Evaluate the model                                                                       #
             # -----------------------------------------------------------------------------------------#
             train_data = framework.eval(
-                training_loader, predict_movement=predict_movement)
+                training_loader, predict_movement=predict_movement, is_training_data=True)
             train_acc_sum += train_data['accuracy']
             # print(
             #     f"Training for {ticker_symbol} done. Accuracy: {train_data['accuracy'] * 100:.2f}%"
