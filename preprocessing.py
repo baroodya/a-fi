@@ -22,14 +22,13 @@ class DataPreprocessor():
             # Create Target
             df["Next Day Close"] = df["Close"].shift(-1)
 
-            # trim NaNs
-            df = df.dropna()
-            droppables = ["Volume", "Dividends", "Stock Splits"]
-            for droppable in droppables:
-                if np.mean(df[droppable] != 0.0):
-                    droppables.remove(droppable)
+            df = df.drop(columns=["Volume", "Dividends", "Stock Splits"])
+            # # drop unnecessary columns
+            # for c in df.columns:
+            #     if np.std(df[c]) == 0.0:
+            #         df = df.drop(columns=[c])
 
-            df = df.drop(columns=droppables)
+            df = df.dropna()
 
             final_df = pd.concat([final_df, df])
         except KeyError:
@@ -44,6 +43,7 @@ class DataPreprocessor():
         self.train_df = final_df.loc[:val_start_date].copy()
         self.val_df = final_df.loc[val_start_date:test_start_date].copy()
         self.test_df = final_df.loc[test_start_date:].copy()
+
     def get_train_df(self):
         return self.train_df
 
