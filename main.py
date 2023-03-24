@@ -125,7 +125,7 @@ Architecture: {architecture.__name__}
             norm_val_df = norm_val_dfs[ticker_symbol]
             test_df = test_dfs[ticker_symbol]
             norm_test_df = norm_val_dfs[ticker_symbol]
-            
+
             # -----------------------------------------------------------------------------------------#
             # Create the datasets and dataloaders                                             #
             # -----------------------------------------------------------------------------------------#
@@ -147,7 +147,7 @@ Architecture: {architecture.__name__}
             # Model, Optimizer, Loss                                                                   #
             # -----------------------------------------------------------------------------------------#
             model = architecture(
-                num_features=num_features, hidden_units=num_hidden_units)
+                sequence_length=days_prior, num_features=num_features, hidden_units=num_hidden_units)
             model.to(device)
 
             loss_fn = torch.nn.MSELoss()

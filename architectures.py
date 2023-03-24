@@ -2,9 +2,10 @@ import torch
 
 
 class ShallowRegressionLSTM(torch.nn.Module):
-    def __init__(self, num_features, hidden_units):
+    def __init__(self, sequence_length, num_features, hidden_units):
         super().__init__()
-        self.num_sensors = num_features  # this is the number of features
+        self.sequence_length = sequence_length
+        self.num_features = num_features  # this is the number of features
         self.hidden_units = hidden_units
         self.num_layers = 1
 
@@ -35,9 +36,10 @@ class ShallowRegressionLSTM(torch.nn.Module):
         return out
 
 class DoubleRegressionLSTM(torch.nn.Module):
-    def __init__(self, num_features, hidden_units):
+    def __init__(self, sequence_length, num_features, hidden_units):
         super().__init__()
-        self.num_sensors = num_features  # this is the number of features
+        self.sequence_length = sequence_length
+        self.num_features = num_features  # this is the number of features
         self.hidden_units = hidden_units
         self.num_layers = 2
 
@@ -69,9 +71,10 @@ class DoubleRegressionLSTM(torch.nn.Module):
         return out
 
 class QuadRegressionLSTM(torch.nn.Module):
-    def __init__(self, num_features, hidden_units):
+    def __init__(self, sequence_length, num_features, hidden_units):
         super().__init__()
-        self.num_sensors = num_features  # this is the number of features
+        self.sequence_length = sequence_length
+        self.num_features = num_features  # this is the number of features
         self.hidden_units = hidden_units
         self.num_layers = 4
 
@@ -103,9 +106,10 @@ class QuadRegressionLSTM(torch.nn.Module):
         return out
 
 class DeepRegressionLSTM(torch.nn.Module):
-    def __init__(self, num_features, hidden_units):
+    def __init__(self, sequence_length, num_features, hidden_units):
         super().__init__()
-        self.num_sensors = num_features  # this is the number of features
+        self.sequence_length = sequence_length
+        self.num_features = num_features  # this is the number of features
         self.hidden_units = hidden_units
         self.num_layers = 16
 
