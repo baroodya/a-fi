@@ -31,7 +31,7 @@ def real_eval(model, closes, test_loader, starting_value=100, sequence_sep=0):
             fall_count += 1
             curr_value += confidence * (curr_shares * last_close)
             curr_shares -= confidence * (curr_shares)
-        print(f"Yesterday's Close: {last_close:.2f} Today's Pred: {output:.2f} Today's Close: {closes[i]:.2f} Shares: {curr_shares:.2f} Cash: {curr_value:.2f} Value {curr_shares * closes[i] + curr_value:.2f} Hold Value: {hold_curr_shares * closes[i]:.2f}")
+        # print(f"Yesterday's Close: {last_close:.2f} Today's Pred: {output:.2f} Today's Close: {closes[i]:.2f} Shares: {curr_shares:.2f} Cash: {curr_value:.2f} Value {curr_shares * closes[i] + curr_value:.2f} Hold Value: {hold_curr_shares * closes[i]:.2f}")
         i += 1
         last_pred_close = output
     curr_value += curr_shares * closes[-1]

@@ -80,7 +80,7 @@ for ticker_symbol in ticker_symbols:
 
     num_features = len(feature_columns)
 
-plt.ion()
+# plt.ion()
 if not use_pretrained:
     for i, (
         training_batch_size,
@@ -125,7 +125,7 @@ Architecture: {architecture.__name__}
             norm_val_df = norm_val_dfs[ticker_symbol]
             test_df = test_dfs[ticker_symbol]
             norm_test_df = norm_val_dfs[ticker_symbol]
-
+            
             # -----------------------------------------------------------------------------------------#
             # Create the datasets and dataloaders                                             #
             # -----------------------------------------------------------------------------------------#
@@ -191,7 +191,7 @@ Architecture: {architecture.__name__}
             # -----------------------------------------------------------------------------------------#
             # Plot results                                                                       #
             # -----------------------------------------------------------------------------------------#
-            plt.figure()
+            # plt.figure()
             plt.plot(train_df.index.values,
                      norm_train_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
             plt.plot(train_df.index.values,
@@ -204,7 +204,7 @@ Architecture: {architecture.__name__}
             plt.show()
             # plt.pause(0.1)
 
-            plt.figure()
+            # plt.figure()
             plt.plot(val_df.index.values,
                      norm_val_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
             plt.plot(val_df.index.values,

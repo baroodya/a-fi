@@ -3,9 +3,11 @@ MODEL_PATH = (
 )
 
 TRAINING_WEIGHTS_FILE_NAME = "best_training_model_weights.pth"
+TRAINING_MODEL_FILE_NAME = "best_training_model.pth"
 TRAIN_STATS_FILE_NAME = "best_training_model.json"
 
 VAL_WEIGHTS_FILE_NAME = "best_val_model_weights.pth"
+VAL_MODEL_FILE_NAME = "best_val_model.pth"
 VAL_STATS_FILE_NAME = "best_val_model.json"
 
 STD_TICKER_SYMBOLS = [

@@ -4,6 +4,8 @@ from constants import (
     VAL_WEIGHTS_FILE_NAME,
     TRAIN_STATS_FILE_NAME,
     VAL_STATS_FILE_NAME,
+    TRAINING_MODEL_FILE_NAME,
+    VAL_MODEL_FILE_NAME,
 )
 from datetime import datetime
 import json
@@ -11,6 +13,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import torch
+import time
 
 
 class BaseFramework():
@@ -48,7 +51,7 @@ class BaseFramework():
                 prediction = self.model.forward(features)
                 loss = self.loss_func(prediction, target)
                 # print(
-                #     f"Prediction: {prediction}\nTarget: {target}\nLoss: {loss}\n")
+                    # f"Prediction: {prediction}\nTarget: {target}\nLoss: {loss}\n")
                 # time.sleep(10)
                 losses.append(loss.item())
                 recent_losses[recent_idx] = loss.item()
@@ -118,9 +121,12 @@ class BaseFramework():
 
         stats_file_name = VAL_STATS_FILE_NAME
         weights_file_name = VAL_WEIGHTS_FILE_NAME
+        model_file_name = VAL_MODEL_FILE_NAME
         if is_training:
             stats_file_name = TRAIN_STATS_FILE_NAME
             weights_file_name = TRAINING_WEIGHTS_FILE_NAME
+            model_file_name = TRAINING_MODEL_FILE_NAME
+
 
         file_path = os.path.join(current_model_path, stats_file_name)
         if not os.path.exists(file_path):
@@ -129,6 +135,7 @@ class BaseFramework():
                     self.model.state_dict(),
                     os.path.join(current_model_path, weights_file_name),
                 )
+                torch.save(self.model, os.path.join(current_model_path, model_file_name))
 
                 best_data = {}
                 if is_training:
@@ -154,6 +161,8 @@ class BaseFramework():
                         self.model.state_dict(),
                         os.path.join(current_model_path, weights_file_name),
                     )
+                    torch.save(self.model, os.path.join(current_model_path, model_file_name))
+
                     
                     if is_training:
                         best_data["accuracy"] = self.train_data["accuracy"]

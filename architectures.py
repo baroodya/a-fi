@@ -29,7 +29,7 @@ class ShallowRegressionLSTM(torch.nn.Module):
         _, (hn, _) = self.lstm(x, (h0, c0))
 
         out = hn.view(-1, self.hidden_units)
-        # out = self.relu(out)
+        out = self.relu(out)
         out = self.linear(out).flatten()
 
         return out
