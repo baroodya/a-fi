@@ -28,9 +28,6 @@ class BaseFramework():
     def train(self, train_loader, epochs, optimizer):
         self.model.train()
         losses = []
-        avg_losses = []
-        recent_losses = np.zeros(100)
-        total_batch_count = 0
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer, gamma=0.9)
 
@@ -41,10 +38,9 @@ class BaseFramework():
         # plt.show()
 
         recent_idx = 0
-        for _ in range(epochs):
+        for i in range(epochs):
             # batch training
             running_loss = 0
-            batch_num = 1
             self.model.train()
             for features, target in train_loader:
                 # forward pass
@@ -54,33 +50,18 @@ class BaseFramework():
                     # f"Prediction: {prediction}\nTarget: {target}\nLoss: {loss}\n")
                 # time.sleep(10)
                 losses.append(loss.item())
-                recent_losses[recent_idx] = loss.item()
+                running_loss += loss.item()
 
                 # backward pass
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                # Print updates every 100 batches
-                if batch_num % 100 == 0:
-                    # avg_losses.append(np.average(recent_losses))
-                    # recent_losses = np.zeros(100)
-                    # plt.plot(np.arange(len(avg_losses)), np.log(avg_losses), 'C0')
-                    # plt.pause(0.001)
-
-                    progress = (total_batch_count) / \
-                        (len(train_loader) * epochs) * 100
-                    print(
-                        f"Training on {self.ticker_symbol}. Progress: {progress:.2f}%. Avg. Loss: {running_loss / batch_num :.5f}.",
+            scheduler.step()
+            print(
+                        f"Training on {self.ticker_symbol}. Progress: {((i+1) / epochs) * 100:.2f}%. Avg. Loss: {running_loss / len(train_loader) :.5f}.",
                         end="\r",
                     )
-                    batch_num = 1
-                    running_loss = 0
-                else:
-                    batch_num += 1
-                    running_loss += loss.item()
-                total_batch_count += 1
-            scheduler.step()
         print()
         return losses
 

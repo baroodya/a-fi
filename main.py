@@ -192,9 +192,9 @@ Architecture: {architecture.__name__}
             # Plot results                                                                       #
             # -----------------------------------------------------------------------------------------#
             # plt.figure()
-            plt.plot(train_df.index.values,
-                     norm_train_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
-            plt.plot(train_df.index.values,
+            plt.plot(norm_train_df.index.values,
+                     norm_train_df["Next Day Close"], label="Ground Truth")
+            plt.plot(norm_train_df.index.values,
                      train_data["predictions"], label="Prediction")
             plt.xlabel("Date")
             plt.ylabel("Predicted Values")
@@ -205,9 +205,9 @@ Architecture: {architecture.__name__}
             # plt.pause(0.1)
 
             # plt.figure()
-            plt.plot(val_df.index.values,
-                     norm_val_df["Next Day Close"].shift(sequence_sep), label="Ground Truth")
-            plt.plot(val_df.index.values,
+            plt.plot(norm_val_df.index.values,
+                     norm_val_df["Next Day Close"], label="Ground Truth")
+            plt.plot(norm_val_df.index.values,
                      val_data["predictions"], label="Prediction")
             plt.xlabel("Date")
             plt.ylabel("Predicted Values")
