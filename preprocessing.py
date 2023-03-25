@@ -8,10 +8,9 @@ from constants import (SINGLE_TICKER_SYMBOL, STD_TICKER_SYMBOLS, FAANG_TICKER_SY
 
 
 class DataPreprocessor():
-    def __init__(self, ticker_symbol, validation_split, test_split) -> None:
+    def __init__(self, ticker_symbol, validation_split) -> None:
         self.ticker_symbol = ticker_symbol
         self.validation_split = validation_split
-        self.test_split = test_split
 
     def pre_process_data(self):
         final_df = pd.DataFrame()
@@ -34,24 +33,17 @@ class DataPreprocessor():
         except KeyError:
             print(f"Couldn't find {self.ticker_symbol}. Continuing...")
 
-        test_start = int(len(final_df) * (1-self.test_split))
-        test_start_date = final_df.iloc[test_start].name
-
-        val_start = int(test_start - (len(final_df) * self.validation_split))
+        val_start = int(len(final_df) * (1-self.validation_split))
         val_start_date = final_df.iloc[val_start].name
 
         self.train_df = final_df.loc[:val_start_date].copy()
-        self.val_df = final_df.loc[val_start_date:test_start_date].copy()
-        self.test_df = final_df.loc[test_start_date:].copy()
+        self.val_df = final_df.loc[val_start_date:].copy()
 
     def get_train_df(self):
         return self.train_df
 
     def get_val_df(self):
         return self.val_df
-
-    def get_test_df(self):
-        return self.test_df
 
     def get_dfs(self):
         return self.train_df, self.val_df, self.test_df
@@ -74,7 +66,6 @@ class DataPreprocessor():
 
         self.norm_train_df = self.train_df.copy()
         self.norm_val_df = self.val_df.copy()
-        self.norm_test_df = self.test_df.copy()
         for c in self.feature_columns:
             train_mean = self.train_df[c].mean()
             train_stddev = self.train_df[c].std()
@@ -82,9 +73,6 @@ class DataPreprocessor():
             self.norm_train_df[c] = (
                 self.train_df[c] - train_mean) / train_stddev
             self.norm_val_df[c] = (self.val_df[c] - train_mean) / train_stddev
-            self.norm_test_df[c] = (
-                self.test_df[c] - train_mean) / train_stddev
-
 
 def get_ticker_symbols(num_ticker_symbols):
     # # Get s&p 500 ticker symbols from wikipedia

@@ -25,7 +25,6 @@ args = parser.parse_args()
 
 training_batch_sizes = args.batch_size
 validation_split = args.val_split[0]
-test_split = args.test_split[0]
 shuffle_dataset = args.shuffle_dataset
 learning_rates = args.learning_rate
 weight_decays = args.weight_decay
@@ -35,7 +34,6 @@ sequence_seps = args.sequence_sep
 use_pretrained = args.use_pretrained
 num_hidden_units_arr = args.num_hidden_units
 num_ticker_symbols = args.num_ticker_symbols[0]
-test_best = args.test_best
 
 architectures = []
 architectures.append(ShallowRegressionLSTM)
@@ -58,8 +56,6 @@ train_dfs = {}
 norm_train_dfs = {}
 val_dfs = {}
 norm_val_dfs = {}
-test_dfs = {}
-norm_test_dfs = {}
 
 # -----------------------------------------------------------------------------------------#
 # Preprocess the Data                                                                      #
@@ -67,13 +63,12 @@ norm_test_dfs = {}
 for ticker_symbol in ticker_symbols:
     preprocessor = DataPreprocessor(
         ticker_symbol=ticker_symbol,
-        validation_split=validation_split,
-        test_split=test_split
+        validation_split=validation_split
     )
     preprocessor.pre_process_data()
-    train_dfs[ticker_symbol], val_dfs[ticker_symbol], test_dfs[ticker_symbol] = preprocessor.get_dfs()
+    train_dfs[ticker_symbol], val_dfs[ticker_symbol] = preprocessor.get_dfs()
     preprocessor.normalize_pre_processed_data()
-    norm_train_dfs[ticker_symbol], norm_val_dfs[ticker_symbol], norm_test_dfs[ticker_symbol] = preprocessor.get_norm_dfs()
+    norm_train_dfs[ticker_symbol], norm_val_dfs[ticker_symbol] = preprocessor.get_norm_dfs()
     if ticker_symbol == ticker_symbols[0]:
         feature_columns = preprocessor.get_feature_columns()
         target_column = preprocessor.get_target_column()
@@ -123,8 +118,6 @@ Architecture: {architecture.__name__}
             norm_train_df = norm_train_dfs[ticker_symbol]
             val_df = val_dfs[ticker_symbol]
             norm_val_df = norm_val_dfs[ticker_symbol]
-            test_df = test_dfs[ticker_symbol]
-            norm_test_df = norm_val_dfs[ticker_symbol]
 
             # -----------------------------------------------------------------------------------------#
             # Create the datasets and dataloaders                                             #
