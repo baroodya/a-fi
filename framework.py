@@ -72,19 +72,26 @@ class BaseFramework():
         self.model.eval()
 
         outputs = []
-        for features, target in loader:
+        actuals = []
+        last_output = 0
+        last_target = 0
+        for features, targets in loader:
             batch_output = self.model.forward(features)
-            running_loss += self.loss_func(batch_output, target)
+            running_loss += self.loss_func(batch_output, targets)
 
-            for output, target in zip(batch_output, target):
+            for output, target in zip(batch_output, targets):
                 outputs.append(output.item())
-                if abs(output - target) < threshold:
+                actuals.append(target.item())
+                if (output - last_output) * (target - last_target) > 0:
                     num_correct += 1
                 num_seen += 1
+                last_output = output
+                last_target = target
         store = {
             "accuracy": num_correct / num_seen,
             "loss": running_loss / len(loader),
             "predictions": outputs,
+            "targets": actuals,
         }
         if is_training_data:
             self.train_data = store

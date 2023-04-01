@@ -16,7 +16,7 @@ class DataPreprocessor():
         final_df = pd.DataFrame()
         try:
             stock = yf.Ticker(self.ticker_symbol)
-            df = stock.history(period="5y")
+            df = stock.history(period="3y")
 
             # Create Target
             df["Next Day Close"] = df["Close"].shift(-1)
@@ -38,7 +38,12 @@ class DataPreprocessor():
 
         self.train_df = final_df.loc[:val_start_date].copy()
         self.val_df = final_df.loc[val_start_date:].copy()
-
+        
+        # self.create_return_columns()
+        self.target_column = "Next Day Close"
+        self.feature_columns = self.train_df.columns.difference(
+            [self.target_column])
+        
     def get_train_df(self):
         return self.train_df
 
@@ -46,33 +51,43 @@ class DataPreprocessor():
         return self.val_df
 
     def get_dfs(self):
-        return self.train_df, self.val_df, self.test_df
+        return self.train_df, self.val_df
 
     def get_norm_dfs(self):
-        return self.norm_train_df, self.norm_val_df, self.norm_test_df
+        return self.norm_train_df, self.norm_val_df
 
     def get_feature_columns(self):
         return self.feature_columns
 
     def get_target_column(self):
         return self.target_column
+    
+    def get_train_mean(self):
+        return self.train_mean
+    
+    def get_train_stddev(self):
+        return self.train_stddev
 
-    def normalize_pre_processed_data(self):
+    def normalize_pre_processed_data(self, sequence_length):
         # normalize feature columns
-        self.target_column = "Next Day Close"
-        self.feature_columns = self.train_df.columns.difference(
-            [self.target_column])
-
-
         self.norm_train_df = self.train_df.copy()
         self.norm_val_df = self.val_df.copy()
-        for c in self.feature_columns:
-            train_mean = self.train_df[c].mean()
-            train_stddev = self.train_df[c].std()
+        for c in self.train_df.columns:
+            train_rolling = self.norm_train_df[c].rolling(sequence_length)
+            self.norm_train_df[f"{c} Rolling Mean"] = train_rolling.mean()
+            self.norm_train_df[f"{c} Rolling Std"] = train_rolling.std()
+
+            val_rolling = self.norm_val_df[c].rolling(sequence_length)
+            self.norm_val_df[f"{c} Rolling Mean"] = val_rolling.mean()
+            self.norm_val_df[f"{c} Rolling Std"] = val_rolling.std()
 
             self.norm_train_df[c] = (
-                self.train_df[c] - train_mean) / train_stddev
-            self.norm_val_df[c] = (self.val_df[c] - train_mean) / train_stddev
+                self.norm_train_df[c] - self.norm_train_df[f"{c} Rolling Mean"]) / self.norm_train_df[f"{c} Rolling Std"]
+            self.norm_val_df[c] = (self.norm_val_df[c] - self.norm_val_df[f"{c} Rolling Mean"]) / self.norm_val_df[f"{c} Rolling Std"]
+
+        self.norm_train_df = self.norm_train_df.dropna()
+        self.norm_val_df = self.norm_val_df.dropna()
+        return self.norm_train_df, self.norm_val_df
 
 def get_ticker_symbols(num_ticker_symbols):
     # # Get s&p 500 ticker symbols from wikipedia

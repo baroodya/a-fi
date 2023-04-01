@@ -98,7 +98,6 @@ def parse_args():
         shuffle_dataset=False,
         use_pretrained=False,
         val_split=[0.2],
-        test_split=[0.1],
         num_ticker_symbols=[500],
         num_hidden_units=[16],
         test_best=False

@@ -13,6 +13,7 @@ from architectures import (
     DoubleRegressionLSTM,
     QuadRegressionLSTM,
     DeepRegressionLSTM,
+    ShallowLSTM,
 )
 
 import torch
@@ -37,6 +38,7 @@ num_ticker_symbols = args.num_ticker_symbols[0]
 
 architectures = []
 architectures.append(ShallowRegressionLSTM)
+# architectures.append(ShallowLSTM)
 # architectures.append(DoubleRegressionLSTM)
 # architectures.append(QuadRegressionLSTM)
 # architectures.append(DeepRegressionLSTM)
@@ -52,26 +54,23 @@ starting_value = 100
 
 
 ticker_symbols = get_ticker_symbols(1)
+preprocessors = {}
 train_dfs = {}
-norm_train_dfs = {}
 val_dfs = {}
-norm_val_dfs = {}
 
 # -----------------------------------------------------------------------------------------#
 # Preprocess the Data                                                                      #
 # -----------------------------------------------------------------------------------------#
 for ticker_symbol in ticker_symbols:
-    preprocessor = DataPreprocessor(
+    preprocessors[ticker_symbol] = DataPreprocessor(
         ticker_symbol=ticker_symbol,
         validation_split=validation_split
     )
-    preprocessor.pre_process_data()
-    train_dfs[ticker_symbol], val_dfs[ticker_symbol] = preprocessor.get_dfs()
-    preprocessor.normalize_pre_processed_data()
-    norm_train_dfs[ticker_symbol], norm_val_dfs[ticker_symbol] = preprocessor.get_norm_dfs()
+    preprocessors[ticker_symbol].pre_process_data()
+    train_dfs[ticker_symbol], val_dfs[ticker_symbol] = preprocessors[ticker_symbol].get_dfs()
     if ticker_symbol == ticker_symbols[0]:
-        feature_columns = preprocessor.get_feature_columns()
-        target_column = preprocessor.get_target_column()
+        feature_columns = preprocessors[ticker_symbol].get_feature_columns()
+        target_column = preprocessors[ticker_symbol].get_target_column()
 
     num_features = len(feature_columns)
 
@@ -115,9 +114,8 @@ Architecture: {architecture.__name__}
         model_value_sum = 0.0
         for ticker_symbol in ticker_symbols:
             train_df = train_dfs[ticker_symbol]
-            norm_train_df = norm_train_dfs[ticker_symbol]
             val_df = val_dfs[ticker_symbol]
-            norm_val_df = norm_val_dfs[ticker_symbol]
+            norm_train_df, norm_val_df = preprocessors[ticker_symbol].normalize_pre_processed_data(days_prior)
 
             # -----------------------------------------------------------------------------------------#
             # Create the datasets and dataloaders                                             #
@@ -173,10 +171,9 @@ Architecture: {architecture.__name__}
             #     f"Validation for {ticker_symbol} done. Accuracy: {val_data['accuracy'] * 100:.2f}%"
             # )
 
-            closes = list(val_df["Close"])
 
             regular_strat, model_based_strat = real_eval(
-                model, closes, val_loader, starting_value, sequence_sep)
+                model, val_df, feature_columns, target_column, starting_value=starting_value, sequence_length=days_prior, sequence_sep=sequence_sep)
             hold_value_sum += regular_strat
             model_value_sum += model_based_strat
             # print(f"If you invested ${starting_value} in {ticker_symbol}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than the ${regular_strat:.2f} you would earn by just buying and holding.")
@@ -184,28 +181,32 @@ Architecture: {architecture.__name__}
             # -----------------------------------------------------------------------------------------#
             # Plot results                                                                       #
             # -----------------------------------------------------------------------------------------#
+            name = f"Version {i+1}"
+
             # plt.figure()
-            plt.plot(norm_train_df.index.values,
-                     norm_train_df["Next Day Close"], label="Ground Truth")
-            plt.plot(norm_train_df.index.values,
-                     train_data["predictions"], label="Prediction")
+            plt.plot(norm_train_df.index.values[:len(train_data["targets"])],
+                    train_data["targets"], label=f"{name} Target")
+            plt.plot(norm_train_df.index.values[:len(train_data["predictions"])],
+                    train_data["predictions"], label=f"{name} Prediction",)
             plt.xlabel("Date")
             plt.ylabel("Predicted Values")
             plt.suptitle(f"Training Data Predictions for {ticker_symbol}")
-            plt.title(f"Version {i+1}. Architecture: {architecture.__name__}")
             plt.legend()
+            plt.grid()
             plt.show()
             # plt.pause(0.1)
 
             # plt.figure()
-            plt.plot(norm_val_df.index.values,
-                     norm_val_df["Next Day Close"], label="Ground Truth")
-            plt.plot(norm_val_df.index.values,
-                     val_data["predictions"], label="Prediction")
+            plt.plot(norm_val_df.index.values[:len(val_data["targets"])],
+                    val_data["targets"], label=f"{name} Target", marker=".")
+            plt.plot(norm_val_df.index.values[:len(val_data["predictions"])],
+                    val_data["predictions"], label=f"{name} Prediction", marker=".")
+
             plt.xlabel("Date")
             plt.ylabel("Predicted Values")
             plt.title(f"Validation Data Predictions for {ticker_symbol}")
             plt.legend()
+            plt.grid()
             plt.show()
             # plt.pause(0.1)
 
