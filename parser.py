@@ -72,12 +72,12 @@ def parse_args():
         help="the fraction of training data used for testing",
     )
     parser.add_argument(
-        "-ts",
-        "--num-ticker-symbols",
-        metavar="number of ticker symbols used",
+        "-nh",
+        "--norm-hist-length",
+        metavar="number of days in history used to normalize data",
         type=int,
-        nargs=1,
-        help="the number of ticker symbols from which to fetch data",
+        nargs="*",
+        help="the number of days in history used to normalize data",
     )
     parser.add_argument(
         "-hu",
@@ -98,7 +98,7 @@ def parse_args():
         shuffle_dataset=False,
         use_pretrained=False,
         val_split=[0.2],
-        num_ticker_symbols=[500],
+        norm_hist_length=[500],
         num_hidden_units=[16],
         test_best=False
     )

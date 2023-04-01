@@ -30,15 +30,15 @@ shuffle_dataset = args.shuffle_dataset
 learning_rates = args.learning_rate
 weight_decays = args.weight_decay
 epochs_arr = args.epochs
-days_prior_arr = args.days_prior
+sequence_lengths = args.days_prior
 sequence_seps = args.sequence_sep
 use_pretrained = args.use_pretrained
 num_hidden_units_arr = args.num_hidden_units
-num_ticker_symbols = args.num_ticker_symbols[0]
+norm_hist_lengths = args.norm_hist_length
 
 architectures = []
-architectures.append(ShallowRegressionLSTM)
-# architectures.append(ShallowLSTM)
+# architectures.append(ShallowRegressionLSTM)
+architectures.append(ShallowLSTM)
 # architectures.append(DoubleRegressionLSTM)
 # architectures.append(QuadRegressionLSTM)
 # architectures.append(DeepRegressionLSTM)
@@ -74,36 +74,39 @@ for ticker_symbol in ticker_symbols:
 
     num_features = len(feature_columns)
 
-# plt.ion()
+plt.ion()
 if not use_pretrained:
     for i, (
         training_batch_size,
         learning_rate,
         weight_decay,
         epochs,
-        days_prior,
+        sequence_length,
         sequence_sep,
         architecture,
         num_hidden_units,
+        norm_hist_length,
     ) in enumerate(get_hyperparameter_combos([
         training_batch_sizes,
         learning_rates,
         weight_decays,
         epochs_arr,
-        days_prior_arr,
+        sequence_lengths,
         sequence_seps,
         architectures,
         num_hidden_units_arr,
+        norm_hist_lengths,
     ])):
         print(f"""
 -------------------------------------------------------------------------------------
 Hyperparameters for Version {i+1}:
-Training Batch Size: {training_batch_size}
+Training Batch Size: {training_batch_size} Examples
 Learning Rate: {learning_rate}
-Number of Epochs: {epochs}
-History Considered: {days_prior}
-Sequence Seperation: {sequence_sep}
-Number of Hidden Units: {num_hidden_units}
+Number of Epochs: {epochs} Epochs
+History Considered: {sequence_length} Days
+History Considered in Norm: {norm_hist_length} Days
+Sequence Seperation: {sequence_sep} Days
+Number of Hidden Units: {num_hidden_units} Units
 Architecture: {architecture.__name__}
 -------------------------------------------------------------------------------------
 
@@ -115,16 +118,16 @@ Architecture: {architecture.__name__}
         for ticker_symbol in ticker_symbols:
             train_df = train_dfs[ticker_symbol]
             val_df = val_dfs[ticker_symbol]
-            norm_train_df, norm_val_df = preprocessors[ticker_symbol].normalize_pre_processed_data(days_prior)
+            norm_train_df, norm_val_df = preprocessors[ticker_symbol].normalize_pre_processed_data(norm_hist_length)
 
             # -----------------------------------------------------------------------------------------#
             # Create the datasets and dataloaders                                             #
             # -----------------------------------------------------------------------------------------#
             training_dataset = FeatureDataset(
-                dataframe=norm_train_df, features=feature_columns, target=target_column, sequence_length=days_prior, sequence_sep=sequence_sep)
+                dataframe=norm_train_df, features=feature_columns, target=target_column, sequence_length=sequence_length, sequence_sep=sequence_sep)
 
             val_dataset = FeatureDataset(
-                dataframe=norm_val_df, features=feature_columns, target=target_column, sequence_length=days_prior, sequence_sep=sequence_sep)
+                dataframe=norm_val_df, features=feature_columns, target=target_column, sequence_length=sequence_length, sequence_sep=0)
 
             # for repeatability
             torch.manual_seed(99)
@@ -138,7 +141,7 @@ Architecture: {architecture.__name__}
             # Model, Optimizer, Loss                                                                   #
             # -----------------------------------------------------------------------------------------#
             model = architecture(
-                sequence_length=days_prior, num_features=num_features, hidden_units=num_hidden_units)
+                sequence_length=sequence_length, num_features=num_features, hidden_units=num_hidden_units)
             model.to(device)
 
             loss_fn = torch.nn.MSELoss()
@@ -173,17 +176,16 @@ Architecture: {architecture.__name__}
 
 
             regular_strat, model_based_strat = real_eval(
-                model, val_df, feature_columns, target_column, starting_value=starting_value, sequence_length=days_prior, sequence_sep=sequence_sep)
+                model, val_df, feature_columns, target_column, starting_value=starting_value, sequence_length=sequence_length, sequence_sep=0)
             hold_value_sum += regular_strat
             model_value_sum += model_based_strat
-            # print(f"If you invested ${starting_value} in {ticker_symbol}, you would end with ${model_based_strat:.2f}. This is {(model_based_strat - regular_strat) / regular_strat * 100:.2f}% more than the ${regular_strat:.2f} you would earn by just buying and holding.")
 
             # -----------------------------------------------------------------------------------------#
             # Plot results                                                                       #
             # -----------------------------------------------------------------------------------------#
             name = f"Version {i+1}"
 
-            # plt.figure()
+            plt.figure()
             plt.plot(norm_train_df.index.values[:len(train_data["targets"])],
                     train_data["targets"], label=f"{name} Target")
             plt.plot(norm_train_df.index.values[:len(train_data["predictions"])],
@@ -196,7 +198,7 @@ Architecture: {architecture.__name__}
             plt.show()
             # plt.pause(0.1)
 
-            # plt.figure()
+            plt.figure()
             plt.plot(norm_val_df.index.values[:len(val_data["targets"])],
                     val_data["targets"], label=f"{name} Target", marker=".")
             plt.plot(norm_val_df.index.values[:len(val_data["predictions"])],
@@ -214,8 +216,8 @@ Architecture: {architecture.__name__}
             # Update best stats and weights                                                            #
             # -----------------------------------------------------------------------------------------#
 
-            framework.save_model(days_prior, num_hidden_units, sequence_sep, is_training=True)
-            framework.save_model(days_prior, num_hidden_units, sequence_sep, is_training=False)
+            framework.save_model(sequence_length, num_hidden_units, sequence_sep, is_training=True)
+            framework.save_model(sequence_length, num_hidden_units, sequence_sep, is_training=False)
 
         train_acc = train_acc_sum / len(ticker_symbols) * 100
         val_acc = val_acc_sum / len(ticker_symbols) * 100

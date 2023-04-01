@@ -18,7 +18,7 @@ def real_eval(model, df, feature_columns, target_column, starting_value=100, seq
 
     i = sequence_length
     for next_close in next_day_closes[sequence_length+sequence_sep:]:
-        if i % sequence_sep == 0:
+        if i % (sequence_sep + 1) == 0:
             # Collect and normalize recent data
             recent_data = df.iloc[i-sequence_length:i]
             norm_recent_data = (recent_data - recent_data.mean())/recent_data.std()

@@ -16,8 +16,10 @@ class DataPreprocessor():
         final_df = pd.DataFrame()
         try:
             stock = yf.Ticker(self.ticker_symbol)
-            df = stock.history(period="3y")
+            df = stock.history(period="10y")
 
+            # Add open
+            df["Next Day Open"] = df["Open"].shift(-1)
             # Create Target
             df["Next Day Close"] = df["Close"].shift(-1)
 
@@ -68,16 +70,16 @@ class DataPreprocessor():
     def get_train_stddev(self):
         return self.train_stddev
 
-    def normalize_pre_processed_data(self, sequence_length):
+    def normalize_pre_processed_data(self, norm_hist_length):
         # normalize feature columns
         self.norm_train_df = self.train_df.copy()
         self.norm_val_df = self.val_df.copy()
         for c in self.train_df.columns:
-            train_rolling = self.norm_train_df[c].rolling(sequence_length)
+            train_rolling = self.norm_train_df[c].rolling(norm_hist_length)
             self.norm_train_df[f"{c} Rolling Mean"] = train_rolling.mean()
             self.norm_train_df[f"{c} Rolling Std"] = train_rolling.std()
 
-            val_rolling = self.norm_val_df[c].rolling(sequence_length)
+            val_rolling = self.norm_val_df[c].rolling(norm_hist_length)
             self.norm_val_df[f"{c} Rolling Mean"] = val_rolling.mean()
             self.norm_val_df[f"{c} Rolling Std"] = val_rolling.std()
 
@@ -104,5 +106,5 @@ def get_ticker_symbols(num_ticker_symbols):
     #     ticker_symbols.append(ticker)
 
     ticker_symbols = FAANG_TICKER_SYMBOLS
-    ticker_symbols = SINGLE_TICKER_SYMBOL
+    # ticker_symbols = SINGLE_TICKER_SYMBOL
     return ticker_symbols

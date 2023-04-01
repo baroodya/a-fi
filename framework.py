@@ -29,7 +29,7 @@ class BaseFramework():
         self.model.train()
         losses = []
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer, gamma=0.9)
+            optimizer, gamma=0.95)
 
         # plt.figure()
         # plt.xlabel("Number of Examples")
@@ -59,13 +59,13 @@ class BaseFramework():
 
             scheduler.step()
             print(
-                        f"Training on {self.ticker_symbol}. Progress: {((i+1) / epochs) * 100:.2f}%. Avg. Loss: {running_loss / len(train_loader) :.5f}.",
+                        f"Training on {self.ticker_symbol}. Progress: {((i+1) / epochs) * 100:.2f}%. Avg. Loss: {running_loss / len(train_loader) :.5f}. Learning Rate: {scheduler.get_last_lr()[0]:.5f}",
                         end="\r",
                     )
         print()
         return losses
 
-    def eval(self, loader, threshold=1, is_training_data=False):
+    def eval(self, loader, threshold=0.1, is_training_data=False):
         num_correct = 0
         num_seen = 0
         running_loss = 0
