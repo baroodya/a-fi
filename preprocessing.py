@@ -8,9 +8,11 @@ from constants import (SINGLE_TICKER_SYMBOL, STD_TICKER_SYMBOLS, FAANG_TICKER_SY
 
 
 class DataPreprocessor():
-    def __init__(self, ticker_symbol, validation_split) -> None:
+    def __init__(self, ticker_symbol, validation_split, predict_movement) -> None:
         self.ticker_symbol = ticker_symbol
         self.validation_split = validation_split
+
+        self.predict_movement = predict_movement
 
     def pre_process_data(self):
         final_df = pd.DataFrame()
@@ -21,6 +23,9 @@ class DataPreprocessor():
             # Add open
             df["Next Day Open"] = df["Open"].shift(-1)
             # Create Target
+            if self.predict_movement:
+                df["Next Day Movement"] = df["Close"].shift(-1) > df["Close"]
+                df = df.astype({"Next Day Movement": "int"})
             df["Next Day Close"] = df["Close"].shift(-1)
 
             df = df.drop(columns=["Volume", "Dividends", "Stock Splits"])
@@ -43,6 +48,8 @@ class DataPreprocessor():
         
         # self.create_return_columns()
         self.target_column = "Next Day Close"
+        if self.predict_movement:
+            self.target_column = "Next Day Movement"
         self.feature_columns = self.train_df.columns.difference(
             [self.target_column])
         
@@ -106,5 +113,5 @@ def get_ticker_symbols(num_ticker_symbols):
     #     ticker_symbols.append(ticker)
 
     ticker_symbols = FAANG_TICKER_SYMBOLS
-    # ticker_symbols = SINGLE_TICKER_SYMBOL
+    ticker_symbols = SINGLE_TICKER_SYMBOL
     return ticker_symbols

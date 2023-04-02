@@ -1,5 +1,9 @@
-MODEL_PATH = (
-    "models"
+PRICE_MODEL_PATH = (
+    "price_models"
+)
+
+MOVEMENT_MODEL_PATH = (
+    "mvmt_models"
 )
 
 TRAINING_WEIGHTS_FILE_NAME = "best_training_model_weights.pth"

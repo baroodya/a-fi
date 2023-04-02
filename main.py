@@ -14,6 +14,7 @@ from architectures import (
     QuadRegressionLSTM,
     DeepRegressionLSTM,
     ShallowLSTM,
+    ShallowMovementLSTM,
 )
 
 import torch
@@ -35,9 +36,11 @@ sequence_seps = args.sequence_sep
 use_pretrained = args.use_pretrained
 num_hidden_units_arr = args.num_hidden_units
 norm_hist_lengths = args.norm_hist_length
+predict_movement = args.predict_movement
 
 architectures = []
-# architectures.append(ShallowRegressionLSTM)
+
+architectures.append(ShallowRegressionLSTM)
 architectures.append(ShallowLSTM)
 # architectures.append(DoubleRegressionLSTM)
 # architectures.append(QuadRegressionLSTM)
@@ -64,7 +67,8 @@ val_dfs = {}
 for ticker_symbol in ticker_symbols:
     preprocessors[ticker_symbol] = DataPreprocessor(
         ticker_symbol=ticker_symbol,
-        validation_split=validation_split
+        validation_split=validation_split,
+        predict_movement=predict_movement
     )
     preprocessors[ticker_symbol].pre_process_data()
     train_dfs[ticker_symbol], val_dfs[ticker_symbol] = preprocessors[ticker_symbol].get_dfs()
@@ -130,7 +134,8 @@ Architecture: {architecture.__name__}
                 dataframe=norm_val_df, features=feature_columns, target=target_column, sequence_length=sequence_length, sequence_sep=0)
 
             # for repeatability
-            torch.manual_seed(99)
+            if not shuffle_dataset:
+                torch.manual_seed(99)
 
             training_loader = DataLoader(
                 training_dataset, batch_size=training_batch_size, shuffle=shuffle_dataset)
@@ -145,6 +150,8 @@ Architecture: {architecture.__name__}
             model.to(device)
 
             loss_fn = torch.nn.MSELoss()
+            if predict_movement:
+                loss_fn = torch.nn.BCEWithLogitsLoss()
             optimizer = torch.optim.Adam(
                 model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
@@ -174,8 +181,13 @@ Architecture: {architecture.__name__}
             #     f"Validation for {ticker_symbol} done. Accuracy: {val_data['accuracy'] * 100:.2f}%"
             # )
 
-
-            regular_strat, model_based_strat = real_eval(
+            regular_strat = 0
+            model_based_strat = 0
+            if predict_movement:
+                regular_strat = 1
+                model_based_strat = 1
+            else:
+                regular_strat, model_based_strat = real_eval(
                 model, val_df, feature_columns, target_column, starting_value=starting_value, sequence_length=sequence_length, sequence_sep=0)
             hold_value_sum += regular_strat
             model_value_sum += model_based_strat
@@ -216,8 +228,8 @@ Architecture: {architecture.__name__}
             # Update best stats and weights                                                            #
             # -----------------------------------------------------------------------------------------#
 
-            framework.save_model(sequence_length, num_hidden_units, sequence_sep, is_training=True)
-            framework.save_model(sequence_length, num_hidden_units, sequence_sep, is_training=False)
+            framework.save_model(sequence_length, num_hidden_units, sequence_sep, is_training=True, predict_movement=predict_movement)
+            framework.save_model(sequence_length, num_hidden_units, sequence_sep, is_training=False, predict_movement=predict_movement)
 
         train_acc = train_acc_sum / len(ticker_symbols) * 100
         val_acc = val_acc_sum / len(ticker_symbols) * 100

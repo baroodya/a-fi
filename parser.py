@@ -54,6 +54,7 @@ def parse_args():
         help="the number of datapoints in a batch",
     )
     parser.add_argument("--shuffle-dataset", action="store_true")
+    parser.add_argument("--predict-movement", action="store_true")
     parser.add_argument("--use-pretrained", action="store_true")
     parser.add_argument(
         "-p",
@@ -100,6 +101,7 @@ def parse_args():
         val_split=[0.2],
         norm_hist_length=[500],
         num_hidden_units=[16],
-        test_best=False
+        test_best=False,
+        predict_movement=False
     )
     return parser.parse_args()
