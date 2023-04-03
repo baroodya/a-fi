@@ -117,5 +117,5 @@ def get_ticker_symbols(num_ticker_symbols):
     #     ticker_symbols.append(ticker)
 
     ticker_symbols = FAANG_TICKER_SYMBOLS
-    ticker_symbols = SINGLE_TICKER_SYMBOL
+    # ticker_symbols = SINGLE_TICKER_SYMBOL
     return ticker_symbols
