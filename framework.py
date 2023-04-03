@@ -30,7 +30,7 @@ class BaseFramework():
         self.model.train()
         losses = []
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer, gamma=0.95)
+            optimizer, gamma=0.97)
 
         # plt.figure()
         # plt.xlabel("Number of Examples")
@@ -66,7 +66,7 @@ class BaseFramework():
         print()
         return losses
 
-    def eval(self, loader, threshold=0.1, is_training_data=False, predict_movement=False):
+    def eval(self, loader, threshold=0.25, is_training_data=False, predict_movement=False):
         num_correct = 0
         num_seen = 0
         running_loss = 0
@@ -87,11 +87,11 @@ class BaseFramework():
                     if abs(output - target) < 0.5:
                         num_correct += 1
                 else:
-                    if (output - last_output) * (target - last_target) > 0:
+                    if abs(output - target) < threshold:
                         num_correct += 1
                 num_seen += 1
-                last_output = output
-                last_target = target
+                # last_output = output
+                # last_target = target
         store = {
             "accuracy": num_correct / num_seen,
             "loss": running_loss / len(loader),

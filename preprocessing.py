@@ -40,11 +40,15 @@ class DataPreprocessor():
         except KeyError:
             print(f"Couldn't find {self.ticker_symbol}. Continuing...")
 
-        val_start = int(len(final_df) * (1-self.validation_split))
+        val_len = int(len(final_df) * self.validation_split)
+        val_start = np.random.randint(len(final_df) - val_len)
+        # val_start = len(final_df) - val_len - 1
         val_start_date = final_df.iloc[val_start].name
+        val_end_date = final_df.iloc[val_start + val_len].name
 
-        self.train_df = final_df.loc[:val_start_date].copy()
-        self.val_df = final_df.loc[val_start_date:].copy()
+        self.val_df = final_df.loc[val_start_date:val_end_date].copy()
+
+        self.train_df = pd.concat([final_df.loc[:val_start_date].copy(), final_df.loc[val_end_date:].copy()])
         
         # self.create_return_columns()
         self.target_column = "Next Day Close"

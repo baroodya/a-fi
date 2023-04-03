@@ -1,8 +1,10 @@
 import numpy as np
 import torch
 
-def real_eval(model, df, feature_columns, target_column, starting_value=100, sequence_length=5, sequence_sep=0):
+def real_eval(model, df, norm_df, feature_columns, target_column, starting_value=100, sequence_length=5, norm_hist_length=5, sequence_sep=0):
     starting_shares = 0
+
+    df = df.iloc[(len(df) - len(norm_df)):]
 
     curr_value = starting_value
     curr_shares = starting_shares
@@ -16,12 +18,12 @@ def real_eval(model, df, feature_columns, target_column, starting_value=100, seq
     rise_count = 0
     fall_count = 0
 
-    i = sequence_length
-    for next_close in next_day_closes[sequence_length+sequence_sep:]:
+    for i, next_close in enumerate(next_day_closes[:len(df) - sequence_length - min(0,sequence_sep)]):
         if i % (sequence_sep + 1) == 0:
             # Collect and normalize recent data
-            recent_data = df.iloc[i-sequence_length:i]
-            norm_recent_data = (recent_data - recent_data.mean())/recent_data.std()
+            norm_data = df.iloc[i-(norm_hist_length-sequence_length):i+sequence_length]
+            recent_data = df.iloc[i:i+sequence_length]
+            norm_recent_data = (recent_data - norm_data.mean())/norm_data.std()
             feat = torch.tensor(norm_recent_data[feature_columns].values, dtype=torch.float32)
             feat = torch.unsqueeze(feat, 0)
 
